@@ -10,8 +10,10 @@ Here's the initial plan:
 
 Initial Tech
 
-* Python
-* TBD
+* C#
+* Azure Open AI
+* Azure Blob Storage
+* Azure Cognitive Search
 
 As you can see, this very brand new. Everything has to start somewhere. This is open source and community participation is welcome.
 
