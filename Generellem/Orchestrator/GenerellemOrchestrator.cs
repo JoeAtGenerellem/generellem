@@ -1,7 +1,7 @@
 ﻿using Generellem.DataSource;
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
-using Generellem.RAG;
+using Generellem.Rag;
 
 namespace Generellem.Orchestrator;
 
