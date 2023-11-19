@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
-using Azure;
 using Azure.AI.OpenAI;
 
 using Generellem.DataSource;
 using Generellem.Document;
-using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
-using Generellem.RAG;
+using Generellem.Llm.AzureOpenAI;
+using Generellem.Rag;
 using Generellem.Services;
 
 namespace Generellem.Orchestrator;
@@ -34,32 +30,33 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
         this.searchService = searchService;
     }
 
+    public AzureOpenAIChatResponse? LastResponse { get; set; }
+
+    public string? SystemMessage { get; set; } = "You are a professional AI bot that returns accurate content for busy workers.";
+
     public override async Task<string> AskAsync(string message, CancellationToken cancellationToken)
     {
-        string? endpoint = Environment.GetEnvironmentVariable("OPENAI_ENDPOINT_NAME");
-        _ = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
-
-        string? key = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        _ = key ?? throw new ArgumentNullException(nameof(key));
-
         string? deploymentName = Environment.GetEnvironmentVariable("OPENAI_DEPLOYMENT_NAME");
         _ = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName));
 
-        OpenAIClient client = new(new Uri(endpoint), new AzureKeyCredential(key));
-
         List<ChatMessage> messages = new()
         {
-            new ChatMessage(ChatRole.System, "You are a professional AI bot that returns accurate content for busy workers."),
+            new ChatMessage(ChatRole.System, SystemMessage),
             new ChatMessage(ChatRole.User, message)
         };
 
+        List<string> searchResponse = await Rag.SearchAsync(message, cancellationToken);
+        messages.AddRange(
+            (from response in searchResponse
+             select new ChatMessage(ChatRole.Tool, response))
+            .ToList());
+
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
+        AzureOpenAIChatRequest request = new(chatCompletionOptions);
 
-        ChatCompletions chatCompletionsResponse = client.GetChatCompletions(chatCompletionOptions, cancellationToken);
+        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancellationToken);
 
-        ChatMessage completion = chatCompletionsResponse.Choices[0].Message;
-
-        return await Task.FromResult(completion.Content);
+        return LastResponse.Text ?? string.Empty;
     }
 
     string GetHashedPathAsFileName(string path)
@@ -94,10 +91,10 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
             {
                 string fileName = GetHashedPathAsFileName(path);
                 await blobService.UploadAsync(fileName, File.OpenRead(path));
-                //await blobService.DeleteAsync(fileName);
                 await searchService.RunIndexerAsync();
 
                 var document = DocumentTypeFactory.Create(fileName);
+
                 Console.WriteLine($"Document {path} is of type {document.GetType().Name}");
             }
             else

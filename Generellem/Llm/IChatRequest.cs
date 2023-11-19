@@ -5,7 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Generellem.Llm;
-public class AzureOpenAILlm : ILlm
-{
 
+public interface IChatRequest
+{
+    string Text { get; }
 }

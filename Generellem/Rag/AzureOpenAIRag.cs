@@ -1,5 +1,5 @@
 ﻿using Generellem.Document.DocumentTypes;
-using Generellem.RAG;
+using Generellem.Rag;
 
 namespace Generellem.Rag;
 

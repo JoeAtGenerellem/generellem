@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using Generellem.Document.DocumentTypes;
 
-namespace Generellem.RAG;
+namespace Generellem.Rag;
 
 /// <summary>
 /// Supports Retrieval Augmented Generation
