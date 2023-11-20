@@ -1,7 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
-namespace Generellem.Services;
+namespace Generellem.Services.Azure;
 
 public class AzureBlobService : IAzureBlobService
 {

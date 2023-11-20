@@ -3,12 +3,12 @@ using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
 using Generellem.Rag;
-using Generellem.Services;
-
+using Generellem.Security;
+using Generellem.Services.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-InitializeConfiguration();
+IConfigurationRoot config = InitializeConfiguration();
 
 ServiceCollection services = ConfigureServices();
 
@@ -25,16 +25,20 @@ string response = await orchestrator.AskAsync("What is Generative AI?", tokenSou
 Console.WriteLine("\nResponse:\n");
 Console.WriteLine(response);
 
-static void InitializeConfiguration()
+static IConfigurationRoot InitializeConfiguration()
 {
     IConfigurationBuilder configBuilder = new ConfigurationBuilder()
         .AddJsonFile($"appsettings.json", true, true)
         .AddEnvironmentVariables();
 
-    var configurationRoot = configBuilder.Build();
+#if DEBUG
+    configBuilder.AddUserSecrets<Program>();
+#endif
+
+    return configBuilder.Build();
 }
 
-static ServiceCollection ConfigureServices()
+ServiceCollection ConfigureServices()
 {
     ServiceCollection services = new();
 
@@ -44,5 +48,8 @@ static ServiceCollection ConfigureServices()
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IRag, AzureOpenAIRag>();
     services.AddTransient<GenerellemOrchestrator, AzureOpenAIOrchestrator>();
+    //services.AddTransient<ISecretStore>(svc => new SecretManagerSecretStore(config));
+    services.AddTransient<ISecretStore>(svc => new EnvironmentSecretStore());
+
     return services;
 }

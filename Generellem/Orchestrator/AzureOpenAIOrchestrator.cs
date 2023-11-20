@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 
 using Azure.AI.OpenAI;
@@ -9,7 +8,7 @@ using Generellem.Document;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
-using Generellem.Services;
+using Generellem.Services.Azure;
 
 namespace Generellem.Orchestrator;
 

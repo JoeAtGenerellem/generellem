@@ -1,4 +1,4 @@
-﻿namespace Generellem.Services;
+﻿namespace Generellem.Services.Azure;
 
 public interface IAzureBlobService
 {

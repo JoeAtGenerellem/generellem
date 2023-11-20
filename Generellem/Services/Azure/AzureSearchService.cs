@@ -1,7 +1,7 @@
 ﻿using Azure;
 using Azure.Search.Documents.Indexes;
 
-namespace Generellem.Services;
+namespace Generellem.Services.Azure;
 
 public class AzureSearchService : IAzureSearchService
 {
