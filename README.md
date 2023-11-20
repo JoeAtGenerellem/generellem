@@ -17,6 +17,8 @@ Initial Tech
 
 As you can see, this very brand new. Everything has to start somewhere. This is open source and community participation is welcome.
 
+[Documentation on the Wiki](https://github.com/generellem/generellem/wiki)
+
 You can find me at:
 
 * [Generellem website](https://generellem.ai/)
