@@ -17,7 +17,7 @@ Generellem is a tool for using arbitrary documents with LLMs so anyone can have 
 #### Two Products
 
 1. Open-source - [Apache License 2.0](https://github.com/generellem/generellem/blob/main/LICENSE)
-2. SaaS - Companies can buy a the [Generellem website](https://generellem.ai/)
+2. SaaS - Companies can buy at the [Generellem website](https://generellem.ai/)
 
 As you can see, this very brand new. Everything has to start somewhere. This is open source and community participation is welcome.
 
