@@ -3,6 +3,7 @@ using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
 using Generellem.Rag;
+using Generellem.Rag.AzureOpenAI;
 using Generellem.Security;
 using Generellem.Services.Azure;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +21,7 @@ CancellationTokenSource tokenSource = new();
 
 await orchestrator.ProcessFilesAsync(tokenSource.Token);
 
-string response = await orchestrator.AskAsync("What is Generative AI?", tokenSource.Token);
+string response = await orchestrator.AskAsync("How do I contribute to Generellem?", tokenSource.Token);
 
 Console.WriteLine("\nResponse:\n");
 Console.WriteLine(response);

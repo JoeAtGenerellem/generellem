@@ -6,5 +6,5 @@ public class Excel : IDocumentType
 
     public List<string> SupportedExtensions => new() { ".xlsx", ".xls" };
 
-    public string GetText(string path) => throw new NotImplementedException();
+    public string GetText(Stream documentStream, string fileName) => throw new NotImplementedException();
 }

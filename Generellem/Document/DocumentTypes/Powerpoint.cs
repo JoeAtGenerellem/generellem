@@ -2,9 +2,9 @@
 
 public class Powerpoint : IDocumentType
 {
-    public bool CanProcess { get; set; } = true;
+    public bool CanProcess { get; set; } = false;
 
     public List<string> SupportedExtensions => new() { ".pptx", ".ppt" };
 
-    public string GetText(string path) => throw new NotImplementedException();
+    public string GetText(Stream documentStream, string fileName) => throw new NotImplementedException();
 }

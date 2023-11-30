@@ -4,6 +4,8 @@ namespace Generellem.DataSource;
 
 public class FileSystem : IDocumentSource
 {
+    readonly string[] ExcludedPaths = new string[] { "\\bin", "\\obj", ".git", ".vs" };
+
     static IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
     {
         using FileStream fileStr = File.OpenRead(configPath);
@@ -39,7 +41,8 @@ public class FileSystem : IDocumentSource
                 var directoryInfo = new DirectoryInfo(currentDirectory);
 
                 foreach (var directory in directoryInfo.GetDirectories())
-                    directories.Enqueue(directory.FullName);
+                    if (!IsPathExcluded(directory.FullName))
+                        directories.Enqueue(directory.FullName);
 
                 foreach (var file in directoryInfo.GetFiles())
                     yield return file;
@@ -47,4 +50,12 @@ public class FileSystem : IDocumentSource
         }
     }
 
+    bool IsPathExcluded(string directoryPath)
+    {
+        foreach (string xPath in ExcludedPaths)
+            if (directoryPath.Contains(xPath))
+                return true;
+
+        return false;
+    }
 }

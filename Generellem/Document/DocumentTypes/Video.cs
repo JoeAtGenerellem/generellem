@@ -6,5 +6,5 @@ public class Video : IDocumentType
 
     public List<string> SupportedExtensions => new() { ".mp4", ".avi", ".mkv" };
 
-    public string GetText(string path) => throw new NotImplementedException();
+    public string GetText(Stream documentStream, string fileName) => throw new NotImplementedException();
 }

@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Generellem.Document.DocumentTypes;
 
-namespace Generellem.Document.DocumentTypes;
 public class Markdown : Text
 {
+    public override List<string> SupportedExtensions => new() { ".markdown", ".mdown", ".mkdn", ".mkd", ".mdwn", ".md" };
 }
