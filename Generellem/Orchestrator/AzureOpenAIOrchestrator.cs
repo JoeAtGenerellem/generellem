@@ -1,54 +1,59 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-
-using Azure.AI.OpenAI;
+﻿using Azure.AI.OpenAI;
 
 using Generellem.DataSource;
 using Generellem.Document;
+using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
-using Generellem.Services.Azure;
 
 namespace Generellem.Orchestrator;
 
+/// <summary>
+/// Orchestrates Retrieval-Augmented Generation (RAG)
+/// </summary>
+/// <remarks>
+/// Inspired byRetrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
+/// </remarks>
 public class AzureOpenAIOrchestrator : GenerellemOrchestrator
 {
-    readonly IAzureBlobService blobService;
-    readonly IAzureSearchService searchService;
-
-    public AzureOpenAIOrchestrator(
-        IAzureBlobService blobService,
-        IAzureSearchService searchService,
-        IDocumentSource docSource, 
-        ILlm llm, 
-        IRag rag)
+    public AzureOpenAIOrchestrator(IDocumentSource docSource, ILlm llm, IRag rag)
         : base(docSource, llm, rag)
     {
-        this.blobService = blobService;
-        this.searchService = searchService;
     }
 
     public AzureOpenAIChatResponse? LastResponse { get; set; }
 
-    public string? SystemMessage { get; set; } = "You are a professional AI bot that returns accurate content for busy workers.";
+    public string? SystemMessage { get; set; } =
+        "You are a professional AI bot that returns accurate content for busy workers.\n" +
+        "Please answer the user's question using only information you can find in the context.\n" +
+        "If the user's question is unrelated to the information in the context, say you don't know.\n";
 
-    public override async Task<string> AskAsync(string message, CancellationToken cancellationToken)
+    /// <summary>
+    /// Searches for context, builds a prompt, and gets a response from Azure OpenAI
+    /// </summary>
+    /// <param name="requestText">User's request</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    /// <returns>Azure OpenAI response</returns>
+    /// <exception cref="ArgumentNullException">Throws if config values not found</exception>
+    public override async Task<string> AskAsync(string requestText, CancellationToken cancellationToken)
     {
         string? deploymentName = Environment.GetEnvironmentVariable("OPENAI_DEPLOYMENT_NAME");
         _ = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName));
 
+        List<string> searchResponse = await Rag.SearchAsync(requestText, cancellationToken);
+
+        string context = 
+            "Context: \n\n" +
+            "```" +
+            string.Join("\n\n", searchResponse) +
+            "```\n";
+
         List<ChatMessage> messages = new()
         {
-            new ChatMessage(ChatRole.System, SystemMessage),
-            new ChatMessage(ChatRole.User, message)
+            new ChatMessage(ChatRole.System, SystemMessage + context),
+            new ChatMessage(ChatRole.User, requestText)
         };
-
-        List<string> searchResponse = await Rag.SearchAsync(message, cancellationToken);
-        messages.AddRange(
-            (from response in searchResponse
-             select new ChatMessage(ChatRole.Tool, response))
-            .ToList());
 
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
@@ -58,22 +63,10 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
         return LastResponse.Text ?? string.Empty;
     }
 
-    string GetHashedPathAsFileName(string path)
-    {
-        string extension = Path.GetExtension(path);
-        ArgumentException.ThrowIfNullOrEmpty(extension);
-
-        using var md5 = MD5.Create();
-        byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(path));
-
-        StringBuilder sb = new StringBuilder();
-
-        foreach (byte b in hash)
-            sb.Append(b.ToString("X2"));
-
-        return sb.ToString() + extension;
-    }
-
+    /// <summary>
+    /// Recursive search of files system for supported documents. Uploads documents to Azure Search.
+    /// </summary>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public override async Task ProcessFilesAsync(CancellationToken cancellationToken)
     {
         IEnumerable<string> docExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
@@ -84,17 +77,21 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
             string path = doc.FullName;
             ArgumentException.ThrowIfNullOrEmpty(path);
             string extension = Path.GetExtension(path);
-            ArgumentException.ThrowIfNullOrEmpty(extension);
+
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = "none";
 
             if (docExtensions.Contains(extension))
             {
-                string fileName = GetHashedPathAsFileName(path);
-                await blobService.UploadAsync(fileName, File.OpenRead(path));
-                await searchService.RunIndexerAsync();
+                string fileRef = Path.GetFileName(path);
 
-                var document = DocumentTypeFactory.Create(fileName);
+                IDocumentType docType = DocumentTypeFactory.Create(fileRef);
+                Stream fileStream = File.OpenRead(path);
 
-                Console.WriteLine($"Document {path} is of type {document.GetType().Name}");
+                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, fileRef, cancellationToken);
+                await Rag.IndexAsync(chunks, cancellationToken);
+
+                Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
             }
             else
             {

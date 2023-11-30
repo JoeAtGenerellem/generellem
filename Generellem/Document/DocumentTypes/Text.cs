@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Generellem.Document.DocumentTypes;
+﻿namespace Generellem.Document.DocumentTypes;
 public class Text : IDocumentType
 {
     public bool CanProcess { get; set; } = true;
 
-    public List<string> SupportedExtensions => new() { ".txt" };
+    public virtual List<string> SupportedExtensions => new() { ".txt" };
 
-    public string GetText(string path) => throw new NotImplementedException();
+    public string GetText(Stream documentStream, string fileName)
+    {
+        using StreamReader reader = new StreamReader(documentStream);
+        return reader.ReadToEnd();
+    }
 }
