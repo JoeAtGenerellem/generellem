@@ -3,6 +3,9 @@ using System.Text;
 
 namespace Generellem.Rag;
 
+/// <summary>
+/// Various methods for processing text
+/// </summary>
 public class TextProcessor
 {
     /// <summary>
