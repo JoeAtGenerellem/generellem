@@ -71,7 +71,7 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
     {
         IEnumerable<string> docExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
 
-        foreach (var doc in DocSource.GetFiles(cancellationToken))
+        foreach (FileInfo doc in DocSource.GetFiles(cancellationToken))
         {
             ArgumentNullException.ThrowIfNull(doc);
             string path = doc.FullName;

@@ -27,4 +27,10 @@
     <ProjectReference Include="..\Generellem\Generellem.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="file.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
