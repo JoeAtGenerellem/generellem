@@ -6,15 +6,6 @@ public class FileSystem : IDocumentSource
 {
     readonly string[] ExcludedPaths = new string[] { "\\bin", "\\obj", ".git", ".vs" };
 
-    static IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
-    {
-        using FileStream fileStr = File.OpenRead(configPath);
-
-        IEnumerable<FileSpec>? fileSpec = JsonSerializer.Deserialize<IEnumerable<FileSpec>>(fileStr);
-
-        return fileSpec ?? Enumerable.Empty<FileSpec>();
-    }
-
     /// <summary>
     /// Perform a recursive file search for the entire directory tree from a configured set of paths.
     /// </summary>
@@ -24,7 +15,7 @@ public class FileSystem : IDocumentSource
     /// </remarks>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns>An enumerable collection of <see cref="FileInfo"/> found in the directory tree.</returns>
-    public IEnumerable<FileInfo> GetFiles(CancellationToken cancellationToken)
+    public virtual IEnumerable<FileInfo> GetFiles(CancellationToken cancellationToken)
     {
         IEnumerable<FileSpec> fileSpecs = GetPaths();
 
@@ -48,6 +39,15 @@ public class FileSystem : IDocumentSource
                     yield return file;
             } 
         }
+    }
+
+    static IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
+    {
+        using FileStream fileStr = File.OpenRead(configPath);
+
+        IEnumerable<FileSpec>? fileSpec = JsonSerializer.Deserialize<IEnumerable<FileSpec>>(fileStr);
+
+        return fileSpec ?? Enumerable.Empty<FileSpec>();
     }
 
     bool IsPathExcluded(string directoryPath)

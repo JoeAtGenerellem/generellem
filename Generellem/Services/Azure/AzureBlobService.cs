@@ -14,13 +14,13 @@ public class AzureBlobService : IAzureBlobService
         _containerName = /*"fileupload-learnopenaisearchidx2";//*/ containerName;
     }
 
-    public async Task UploadAsync(string fileName, Stream stream)
+    public virtual async Task UploadAsync(string fileName, Stream stream)
     {
         var blobClient = new BlobClient(_connectionString, _containerName, fileName);
         await blobClient.UploadAsync(stream, overwrite: true);
     }
 
-    public async Task<Stream> DownloadAsync(string fileName)
+    public virtual async Task<Stream> DownloadAsync(string fileName)
     {
         var blobClient = new BlobClient(_connectionString, _containerName, fileName);
         BlobDownloadInfo blobInfo = await blobClient.DownloadAsync();
@@ -28,7 +28,7 @@ public class AzureBlobService : IAzureBlobService
         return blobInfo.Content;
     }
 
-    public async Task DeleteAsync(string fileName)
+    public virtual async Task DeleteAsync(string fileName)
     {
         var blobClient = new BlobClient(_connectionString, _containerName, fileName);
         await blobClient.DeleteAsync();

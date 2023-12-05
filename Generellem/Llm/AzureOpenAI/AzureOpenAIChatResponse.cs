@@ -9,7 +9,7 @@ public class AzureOpenAIChatResponse : IChatResponse
         this.ChatCompletionsResponse = chatCompletionsResponse;
     }
 
-    public ChatCompletions ChatCompletionsResponse { get; init; }
+    public virtual ChatCompletions ChatCompletionsResponse { get; init; }
 
-    public string? Text => ChatCompletionsResponse?.Choices[0]?.Message?.Content;
+    public virtual string? Text => ChatCompletionsResponse?.Choices[0]?.Message?.Content;
 }

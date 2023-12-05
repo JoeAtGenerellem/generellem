@@ -25,7 +25,7 @@ public class AzureSearchService : IAzureSearchService
         searchServiceIndex = Environment.GetEnvironmentVariable("GenerellemSearchServiceIndex")!;
     }
 
-    public async Task CreateIndexAsync()
+    public virtual async Task CreateIndexAsync()
     {
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
@@ -56,7 +56,7 @@ public class AzureSearchService : IAzureSearchService
         await indexClient.CreateOrUpdateIndexAsync(searchIndex);
     }
 
-    public async Task UploadDocumentsAsync(List<TextChunk> documents)
+    public virtual async Task UploadDocumentsAsync(List<TextChunk> documents)
     {
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
@@ -66,7 +66,7 @@ public class AzureSearchService : IAzureSearchService
         await searchClient.IndexDocumentsAsync(IndexDocumentsBatch.MergeOrUpload(documents));
     }
 
-    public async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding)
+    public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding)
     {
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
