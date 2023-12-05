@@ -8,13 +8,13 @@ namespace Generellem.Orchestrator;
 /// Coordinates <see cref="IDocumentSource"/>, <see cref="ILlm"/>, and <see cref="IRag"/>
 /// to coordinate document processing and querying.
 /// </summary>
-public abstract class GenerellemOrchestrator
+public abstract class GenerellemOrchestratorBase
 {
     protected virtual IDocumentSource DocSource { get; init; }
     protected virtual ILlm Llm { get; init; }
     protected virtual IRag Rag { get; init; }
 
-    public GenerellemOrchestrator(IDocumentSource docSource, ILlm llm, IRag rag)
+    public GenerellemOrchestratorBase(IDocumentSource docSource, ILlm llm, IRag rag)
     {
         this.DocSource = docSource;
         this.Llm = llm;

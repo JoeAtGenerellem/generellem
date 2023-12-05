@@ -1,23 +1,23 @@
-﻿using System.Security;
-
-using Generellem.Rag;
+﻿using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
-using Generellem.Security;
 using Generellem.Services.Azure;
+
+using Microsoft.Extensions.Configuration;
 
 using Moq;
 
 namespace Generellem.Tests;
+
 public class AzureOpenAIRagTests
 {
-    Mock<ISecretStore> secretStoreMock = new();
-    Mock<IAzureSearchService> searchSvc = new();
+    Mock<IAzureSearchService> azSearchSvcMock = new();
+    Mock<IConfiguration> configMock = new();
 
     IRag azureOpenAIRag;
 
     public AzureOpenAIRagTests()
     {
-        azureOpenAIRag = new AzureOpenAIRag(secretStoreMock.Object, searchSvc.Object);
+        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        searchSvc.Verify(x => x.CreateIndexAsync(), Times.Once());
+        azSearchSvcMock.Verify(x => x.CreateIndexAsync(), Times.Once());
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        searchSvc.Verify(x => x.UploadDocumentsAsync(chunks), Times.Once());
+        azSearchSvcMock.Verify(x => x.UploadDocumentsAsync(chunks), Times.Once());
     }
 
     [Fact]
@@ -47,6 +47,6 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        searchSvc.Verify(x => x.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks)), Times.Once());
+        azSearchSvcMock.Verify(x => x.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks)), Times.Once());
     }
 }

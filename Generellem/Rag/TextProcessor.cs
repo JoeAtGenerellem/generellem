@@ -31,7 +31,7 @@ public class TextProcessor
             chunks.Add(
                 new TextChunk()
                 {
-                    ID = GenerateUniqueTextChunkID(content, fileRef),
+                    ID = Guid.NewGuid().ToString(),// GenerateUniqueTextChunkID(content, fileRef),
                     Content = content,
                     FileRef = fileRef
                 });

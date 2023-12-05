@@ -2,8 +2,10 @@
 using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
-using Generellem.Security;
+using Generellem.Services;
 using Generellem.Services.Azure;
+
+using Microsoft.Extensions.Configuration;
 
 namespace Generellem.Rag.AzureOpenAI;
 
@@ -12,13 +14,13 @@ namespace Generellem.Rag.AzureOpenAI;
 /// </summary>
 public class AzureOpenAIRag : IRag
 {
-    readonly ISecretStore secretStore;
-    readonly IAzureSearchService searchSvc;
+    readonly IAzureSearchService azSearchSvc;
+    readonly IConfiguration config;
 
-    public AzureOpenAIRag(ISecretStore secretStore, IAzureSearchService searchSvc)
+    public AzureOpenAIRag(IAzureSearchService azSearchSvc, IConfiguration config)
     {
-        this.secretStore = secretStore;
-        this.searchSvc = searchSvc;
+        this.azSearchSvc = azSearchSvc;
+        this.config = config;
     }
 
     /// <summary>
@@ -54,8 +56,8 @@ public class AzureOpenAIRag : IRag
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
     {
-        await searchSvc.CreateIndexAsync();
-        await searchSvc.UploadDocumentsAsync(chunks);
+        await azSearchSvc.CreateIndexAsync();
+        await azSearchSvc.UploadDocumentsAsync(chunks);
     }
 
     /// <summary>
@@ -70,7 +72,7 @@ public class AzureOpenAIRag : IRag
 
         Response<Embeddings> embeddings = await client.GetEmbeddingsAsync(new EmbeddingsOptions(embeddingName, new string[] { text }));
         ReadOnlyMemory<float> embedding = embeddings.Value.Data.First().Embedding;
-        List<TextChunk> chunks = await searchSvc.SearchAsync<TextChunk>(embedding);
+        List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding);
 
         return 
             (from  chunk in chunks
@@ -85,14 +87,14 @@ public class AzureOpenAIRag : IRag
     /// <exception cref="ArgumentNullException">Thrown if config values not found</exception>
     (OpenAIClient, string) CreateClient()
     {
-        string? endpointName = Environment.GetEnvironmentVariable("OPENAI_ENDPOINT_NAME");
-        _ = endpointName ?? throw new ArgumentNullException(nameof(endpointName));
+        string? endpointName = config[GKeys.AzOpenAIEndpointName];
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpointName, nameof(endpointName));
 
-        string? embeddingName = Environment.GetEnvironmentVariable("OPENAI_EMBEDDING_NAME");
-        _ = embeddingName ?? throw new ArgumentNullException(nameof(embeddingName));
+        string? embeddingName = config[GKeys.AzOpenAIEmbeddingName];
+        ArgumentException.ThrowIfNullOrWhiteSpace(embeddingName, nameof(embeddingName));
 
-        string? key = secretStore["OPENAI_API_KEY"];
-        _ = key ?? throw new ArgumentNullException(nameof(key));
+        string? key = config[GKeys.AzOpenAIApiKey]; ;
+        ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
 
         OpenAIClient client = new OpenAIClient(new Uri(endpointName), new AzureKeyCredential(key));
 

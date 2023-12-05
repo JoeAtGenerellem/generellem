@@ -6,6 +6,9 @@ using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
+using Generellem.Services;
+
+using Microsoft.Extensions.Configuration;
 
 namespace Generellem.Orchestrator;
 
@@ -15,11 +18,14 @@ namespace Generellem.Orchestrator;
 /// <remarks>
 /// Inspired byRetrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIOrchestrator : GenerellemOrchestrator
+public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
 {
-    public AzureOpenAIOrchestrator(IDocumentSource docSource, ILlm llm, IRag rag)
+    readonly IConfiguration config;
+
+    public AzureOpenAIOrchestrator(IConfiguration config, IDocumentSource docSource, ILlm llm, IRag rag)
         : base(docSource, llm, rag)
     {
+        this.config = config;
     }
 
     public virtual AzureOpenAIChatResponse? LastResponse { get; set; }
@@ -38,7 +44,7 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
     /// <exception cref="ArgumentNullException">Throws if config values not found</exception>
     public override async Task<string> AskAsync(string requestText, CancellationToken cancellationToken)
     {
-        string? deploymentName = Environment.GetEnvironmentVariable("OPENAI_DEPLOYMENT_NAME");
+        string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
         _ = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName));
 
         List<string> searchResponse = await Rag.SearchAsync(requestText, cancellationToken);
