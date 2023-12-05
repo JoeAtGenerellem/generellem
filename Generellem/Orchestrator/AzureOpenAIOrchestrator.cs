@@ -22,7 +22,7 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestrator
     {
     }
 
-    public AzureOpenAIChatResponse? LastResponse { get; set; }
+    public virtual AzureOpenAIChatResponse? LastResponse { get; set; }
 
     public string? SystemMessage { get; set; } =
         "You are a professional AI bot that returns accurate content for busy workers.\n" +

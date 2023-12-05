@@ -11,7 +11,7 @@ public class AzureOpenAIChatRequest : IChatRequest
         this.Options = options;
     }
 
-    public string Text 
+    public virtual string Text 
     {
         get
         {

@@ -29,7 +29,7 @@ public class AzureOpenAIRag : IRag
     /// <param name="fileRef">Reference to file. e.g. either a path, url, or some other indicator of where the file came from</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns>List of <see cref="TextChunk"/></returns>
-    public async Task<List<TextChunk>> EmbedAsync(Stream documentStream, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
+    public virtual async Task<List<TextChunk>> EmbedAsync(Stream documentStream, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
     {
         string fullText = docType.GetText(documentStream, fileRef);
 
@@ -52,7 +52,7 @@ public class AzureOpenAIRag : IRag
     /// </summary>
     /// <param name="chunks">Mulitple <see cref="TextChunk"/> instances for a document.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    public async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
+    public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
     {
         await searchSvc.CreateIndexAsync();
         await searchSvc.UploadDocumentsAsync(chunks);
@@ -64,7 +64,7 @@ public class AzureOpenAIRag : IRag
     /// <param name="text">Text for searching for matches</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns>List of text chunks matching query</returns>
-    public async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
+    public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
     {
         (OpenAIClient client, string embeddingName) = CreateClient();
 

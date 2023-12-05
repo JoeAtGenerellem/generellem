@@ -13,7 +13,7 @@ public class AzureOpenAILlm : ILlm
         this.secretStore = secretStore;
     }
 
-    public async Task<TResponse> AskAsync<TResponse>(IChatRequest request, CancellationToken cancellationToken)
+    public virtual async Task<TResponse> AskAsync<TResponse>(IChatRequest request, CancellationToken cancellationToken)
         where TResponse : IChatResponse
     {
         string? endpoint = Environment.GetEnvironmentVariable("OPENAI_ENDPOINT_NAME");

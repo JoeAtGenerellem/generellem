@@ -10,9 +10,9 @@ namespace Generellem.Orchestrator;
 /// </summary>
 public abstract class GenerellemOrchestrator
 {
-    protected IDocumentSource DocSource { get; init; }
-    protected ILlm Llm { get; init; }
-    protected IRag Rag { get; init; }
+    protected virtual IDocumentSource DocSource { get; init; }
+    protected virtual ILlm Llm { get; init; }
+    protected virtual IRag Rag { get; init; }
 
     public GenerellemOrchestrator(IDocumentSource docSource, ILlm llm, IRag rag)
     {
