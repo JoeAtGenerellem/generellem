@@ -1,31 +1,31 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 
-using Generellem.Security;
+using Generellem.Services;
+
+using Microsoft.Extensions.Configuration;
 namespace Generellem.Llm.AzureOpenAI;
 
 public class AzureOpenAILlm : ILlm
 {
-    readonly ISecretStore secretStore;
+    readonly IConfiguration config;
 
-    public AzureOpenAILlm(ISecretStore secretStore)
+    public AzureOpenAILlm(IConfiguration config)
     {
-        this.secretStore = secretStore;
+        this.config = config;
     }
 
     public virtual async Task<TResponse> AskAsync<TResponse>(IChatRequest request, CancellationToken cancellationToken)
         where TResponse : IChatResponse
     {
-        string? endpoint = Environment.GetEnvironmentVariable("OPENAI_ENDPOINT_NAME");
-        _ = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
+        string? endpoint = config[GKeys.AzOpenAIEndpointName];
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpoint, nameof(endpoint));
 
-        string? key = secretStore["OPENAI_API_KEY"];
-        _ = key ?? throw new ArgumentNullException(nameof(key));
+        string? key = config[GKeys.AzOpenAIApiKey];
+        ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
 
         ChatCompletionsOptions? completionsOptions = (request as AzureOpenAIChatRequest)?.Options;
-
-        if (completionsOptions == null)
-            throw new ArgumentNullException(nameof(completionsOptions));
+        ArgumentNullException.ThrowIfNull(completionsOptions, nameof(completionsOptions));
 
         OpenAIClient client = new(new Uri(endpoint), new AzureKeyCredential(key));
 

@@ -6,6 +6,8 @@ using Azure.Search.Documents.Models;
 
 using Generellem.Rag;
 
+using Microsoft.Extensions.Configuration;
+
 namespace Generellem.Services.Azure;
 
 public class AzureSearchService : IAzureSearchService
@@ -14,19 +16,26 @@ public class AzureSearchService : IAzureSearchService
     const string VectorAlgorithmConfigName = "hnsw-config";
     const string VectorProfileName = "generellem-vector-profile";
 
-    readonly string searchServiceAdminApiKey;
-    readonly string searchServiceEndpoint;
-    readonly string searchServiceIndex;
+    readonly IConfiguration config;
 
-    public AzureSearchService()
+    readonly string? searchServiceAdminApiKey;
+    readonly string? searchServiceEndpoint;
+    readonly string? searchServiceIndex;
+
+    public AzureSearchService(IConfiguration config)
     {
-        searchServiceAdminApiKey = Environment.GetEnvironmentVariable("GenerellemSearchServiceAdminApiKey")!;
-        searchServiceEndpoint = Environment.GetEnvironmentVariable("GenerellemSearchServiceEndpoint")!;
-        searchServiceIndex = Environment.GetEnvironmentVariable("GenerellemSearchServiceIndex")!;
+        this.config = config;
+
+        searchServiceAdminApiKey = config[GKeys.AzSearchServiceAdminApiKey];
+        searchServiceEndpoint = config[GKeys.AzSearchServiceEndpoint];
+        searchServiceIndex = config[GKeys.AzSearchServiceIndex];
     }
 
     public virtual async Task CreateIndexAsync()
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
 
@@ -58,6 +67,9 @@ public class AzureSearchService : IAzureSearchService
 
     public virtual async Task UploadDocumentsAsync(List<TextChunk> documents)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
 
@@ -68,6 +80,9 @@ public class AzureSearchService : IAzureSearchService
 
     public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
         Uri endpoint = new(searchServiceEndpoint);
         AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
 

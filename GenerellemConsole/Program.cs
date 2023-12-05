@@ -4,53 +4,46 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
 using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
-using Generellem.Security;
 using Generellem.Services.Azure;
+
+using GenerellemConsole;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-IConfigurationRoot config = InitializeConfiguration();
+IHost host = InitializeConfiguration(args);
+await host.RunAsync();
 
-ServiceCollection services = ConfigureServices();
-
-ServiceProvider svcProvider = services.BuildServiceProvider();
-
-GenerellemOrchestrator orchestrator = svcProvider.GetRequiredService<GenerellemOrchestrator>();
-
-CancellationTokenSource tokenSource = new();
-
-await orchestrator.ProcessFilesAsync(tokenSource.Token);
-
-string response = await orchestrator.AskAsync("How do I contribute to Generellem?", tokenSource.Token);
-
-Console.WriteLine("\nResponse:\n");
-Console.WriteLine(response);
-
-static IConfigurationRoot InitializeConfiguration()
+IHost InitializeConfiguration(string[] args)
 {
-    IConfigurationBuilder configBuilder = new ConfigurationBuilder()
-        .AddJsonFile($"appsettings.json", true, true)
+    HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+    builder.Configuration.Sources.Clear();
+
+    IHostEnvironment env = builder.Environment;
+
+    builder.Configuration
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{env.EnvironmentName}.json", true, true)
         .AddEnvironmentVariables();
 
+    ConfigureServices(builder.Services);
+
 #if DEBUG
-    configBuilder.AddUserSecrets<Program>();
+    builder.Configuration.AddUserSecrets<Program>();
 #endif
 
-    return configBuilder.Build();
+    return builder.Build();
 }
 
-ServiceCollection ConfigureServices()
+void ConfigureServices(IServiceCollection services)
 {
-    ServiceCollection services = new();
+    services.AddHostedService<GenerellemHostedService>();
 
-    services.AddTransient<IAzureBlobService>(svc => new AzureBlobService(Environment.GetEnvironmentVariable("GenerellemBlobConnectionString")!, Environment.GetEnvironmentVariable("GenerellemBlobContainer")!));
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentSource, FileSystem>();
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IRag, AzureOpenAIRag>();
-    services.AddTransient<GenerellemOrchestrator, AzureOpenAIOrchestrator>();
-    //services.AddTransient<ISecretStore>(svc => new SecretManagerSecretStore(config));
-    services.AddTransient<ISecretStore>(svc => new EnvironmentSecretStore());
-
-    return services;
+    services.AddTransient<GenerellemOrchestratorBase, AzureOpenAIOrchestrator>();
 }

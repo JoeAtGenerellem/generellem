@@ -4,11 +4,15 @@ using Generellem.Llm;
 using Generellem.Orchestrator;
 using Generellem.Rag;
 
+using Microsoft.Extensions.Configuration;
+
 using Moq;
 
 namespace Generellem.Tests;
+
 public class AzureOpenAIOrchestratorTests
 {
+    readonly Mock<IConfiguration> configMock = new();
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<IRag> ragMock = new();
@@ -17,7 +21,7 @@ public class AzureOpenAIOrchestratorTests
 
     public AzureOpenAIOrchestratorTests()
     {
-        orchestrator = new AzureOpenAIOrchestrator(docSourceMock.Object, llmMock.Object, ragMock.Object);
+        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceMock.Object, llmMock.Object, ragMock.Object);
     }
 
     [Fact]
