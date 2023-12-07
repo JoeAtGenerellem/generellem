@@ -13,9 +13,9 @@ public class FileSystem : IDocumentSource
     /// This method performs a recursive search through the directory tree rooted at the specified
     /// paths and returns an enumerable collection of all file paths found. It supports Linux, Mac, and Windows.
     /// </remarks>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>An enumerable collection of <see cref="FileInfo"/> found in the directory tree.</returns>
-    public virtual IEnumerable<FileInfo> GetFiles(CancellationToken cancellationToken)
+    public virtual IEnumerable<FileInfo> GetFiles(CancellationToken cancelToken)
     {
         IEnumerable<FileSpec> fileSpecs = GetPaths();
 
@@ -37,7 +37,13 @@ public class FileSystem : IDocumentSource
 
                 foreach (var file in directoryInfo.GetFiles())
                     yield return file;
-            } 
+
+                if (cancelToken.IsCancellationRequested)
+                    break;
+            }
+
+            if (cancelToken.IsCancellationRequested)
+                break;
         }
     }
 
