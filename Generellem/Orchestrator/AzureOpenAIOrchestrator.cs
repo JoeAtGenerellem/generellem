@@ -39,15 +39,15 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
     /// Searches for context, builds a prompt, and gets a response from Azure OpenAI
     /// </summary>
     /// <param name="requestText">User's request</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Azure OpenAI response</returns>
     /// <exception cref="ArgumentNullException">Throws if config values not found</exception>
-    public override async Task<string> AskAsync(string requestText, CancellationToken cancellationToken)
+    public override async Task<string> AskAsync(string requestText, CancellationToken cancelToken)
     {
         string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
-        _ = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName));
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
 
-        List<string> searchResponse = await Rag.SearchAsync(requestText, cancellationToken);
+        List<string> searchResponse = await Rag.SearchAsync(requestText, cancelToken);
 
         string context = 
             "Context: \n\n" +
@@ -64,7 +64,7 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
 
-        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancellationToken);
+        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
         return LastResponse.Text ?? string.Empty;
     }
@@ -72,12 +72,12 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
     /// <summary>
     /// Recursive search of files system for supported documents. Uploads documents to Azure Search.
     /// </summary>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    public override async Task ProcessFilesAsync(CancellationToken cancellationToken)
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    public override async Task ProcessFilesAsync(CancellationToken cancelToken)
     {
         IEnumerable<string> docExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
 
-        foreach (FileInfo doc in DocSource.GetFiles(cancellationToken))
+        foreach (FileInfo doc in DocSource.GetFiles(cancelToken))
         {
             ArgumentNullException.ThrowIfNull(doc);
             string path = doc.FullName;
@@ -94,15 +94,18 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
                 IDocumentType docType = DocumentTypeFactory.Create(fileRef);
                 Stream fileStream = File.OpenRead(path);
 
-                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, fileRef, cancellationToken);
-                await Rag.IndexAsync(chunks, cancellationToken);
+                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, fileRef, cancelToken);
+                await Rag.IndexAsync(chunks, cancelToken);
 
-                Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
+                //Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
             }
             else
             {
-                Console.WriteLine($"Document {doc} is not supported");
+                //Console.WriteLine($"Document {doc} is not supported");
             }
+
+            if (cancelToken.IsCancellationRequested)
+                break;
         }
     }
 }

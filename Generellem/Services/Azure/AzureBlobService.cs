@@ -20,7 +20,7 @@ public class AzureBlobService : IAzureBlobService
         container = config[GKeys.AzBlobContainer];
     }
 
-    public virtual async Task UploadAsync(string fileName, Stream stream)
+    public virtual async Task UploadAsync(string fileName, Stream stream, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connStr, nameof(connStr));
         ArgumentException.ThrowIfNullOrWhiteSpace(container, nameof(container));
@@ -28,28 +28,28 @@ public class AzureBlobService : IAzureBlobService
         ArgumentNullException.ThrowIfNull(stream, nameof(stream));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        await blobClient.UploadAsync(stream, overwrite: true);
+        await blobClient.UploadAsync(stream, overwrite: true, cancelToken);
     }
 
-    public virtual async Task<Stream> DownloadAsync(string fileName)
+    public virtual async Task<Stream> DownloadAsync(string fileName, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connStr, nameof(connStr));
         ArgumentException.ThrowIfNullOrWhiteSpace(container, nameof(container));
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        BlobDownloadInfo blobInfo = await blobClient.DownloadAsync();
+        BlobDownloadInfo blobInfo = await blobClient.DownloadAsync(cancelToken);
 
         return blobInfo.Content;
     }
 
-    public virtual async Task DeleteAsync(string fileName)
+    public virtual async Task DeleteAsync(string fileName, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connStr, nameof(connStr));
         ArgumentException.ThrowIfNullOrWhiteSpace(container, nameof(container));
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        await blobClient.DeleteAsync();
+        await blobClient.DeleteAsync(cancellationToken: cancelToken);
     }
 }

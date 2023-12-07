@@ -6,5 +6,5 @@ public class Pdf : IDocumentType
 
     public virtual List<string> SupportedExtensions => new() { ".pdf" };
 
-    public virtual string GetText(Stream documentStream, string fileName) => throw new NotImplementedException();
+    public virtual async Task<string> GetTextAsync(Stream documentStream, string fileName) => await Task.FromResult(string.Empty);
 }

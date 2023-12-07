@@ -33,7 +33,7 @@ public class AzureOpenAIRag : IRag
     /// <returns>List of <see cref="TextChunk"/></returns>
     public virtual async Task<List<TextChunk>> EmbedAsync(Stream documentStream, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
     {
-        string fullText = docType.GetText(documentStream, fileRef);
+        string fullText = await docType.GetTextAsync(documentStream, fileRef);
 
         List<TextChunk> chunks = TextProcessor.BreakIntoChunks(fullText, fileRef);
 

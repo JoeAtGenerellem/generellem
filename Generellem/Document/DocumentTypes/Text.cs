@@ -5,9 +5,9 @@ public class Text : IDocumentType
 
     public virtual List<string> SupportedExtensions => new() { ".txt" };
 
-    public virtual string GetText(Stream documentStream, string fileName)
+    public virtual async Task<string> GetTextAsync(Stream documentStream, string fileName)
     {
         using StreamReader reader = new StreamReader(documentStream);
-        return reader.ReadToEnd();
+        return await reader.ReadToEndAsync();
     }
 }

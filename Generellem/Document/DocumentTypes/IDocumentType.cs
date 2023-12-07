@@ -11,15 +11,15 @@ public interface IDocumentType
     public bool CanProcess { get; set; }
 
     /// <summary>
+    /// Which file extensions an implementation can support.
+    /// </summary>
+    List<string> SupportedExtensions { get; }
+
+    /// <summary>
     /// Converts <see cref="Stream"/> into text.
     /// </summary>
     /// <param name="documentStream"><see cref="Stream"/> for accessing document data.</param>
     /// <param name="fileName">Sometimes we need the file name (more specifically - extension) to know how to process the file.</param>
     /// <returns>Full document text.</returns>
-    string GetText(Stream documentStream, string fileName);
-
-    /// <summary>
-    /// Which file extensions an implementation can support.
-    /// </summary>
-    List<string> SupportedExtensions { get; }
+    Task<string> GetTextAsync(Stream documentStream, string fileName);
 }

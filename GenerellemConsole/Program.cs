@@ -12,8 +12,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+CancellationTokenSource tokenSource = new();
+
 IHost host = InitializeConfiguration(args);
-await host.RunAsync();
+await host.RunAsync(tokenSource.Token);
 
 IHost InitializeConfiguration(string[] args)
 {
