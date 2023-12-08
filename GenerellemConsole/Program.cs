@@ -1,4 +1,7 @@
-﻿using Generellem.DataSource;
+﻿using Azure;
+using Azure.AI.OpenAI;
+
+using Generellem.DataSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
@@ -43,6 +46,7 @@ void ConfigureServices(IServiceCollection services)
 {
     services.AddHostedService<GenerellemHostedService>();
 
+    services.AddTransient<LlmClientFactory, LlmClientFactory>();
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentSource, FileSystem>();
     services.AddTransient<ILlm, AzureOpenAILlm>();

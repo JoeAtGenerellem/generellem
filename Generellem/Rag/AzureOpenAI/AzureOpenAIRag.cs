@@ -2,6 +2,7 @@
 using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
+using Generellem.Llm;
 using Generellem.Services;
 using Generellem.Services.Azure;
 
@@ -17,10 +18,13 @@ public class AzureOpenAIRag : IRag
     readonly IAzureSearchService azSearchSvc;
     readonly IConfiguration config;
 
-    public AzureOpenAIRag(IAzureSearchService azSearchSvc, IConfiguration config)
+    readonly OpenAIClient openAIClient;
+
+    public AzureOpenAIRag(IAzureSearchService azSearchSvc, IConfiguration config, LlmClientFactory llmClientFact)
     {
         this.azSearchSvc = azSearchSvc;
         this.config = config;
+        this.openAIClient = llmClientFact.CreateOpenAIClient();
     }
 
     /// <summary>
@@ -34,14 +38,12 @@ public class AzureOpenAIRag : IRag
     public virtual async Task<List<TextChunk>> EmbedAsync(Stream documentStream, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
     {
         string fullText = await docType.GetTextAsync(documentStream, fileRef);
-
         List<TextChunk> chunks = TextProcessor.BreakIntoChunks(fullText, fileRef);
-
-        (OpenAIClient client, string embeddingName) = CreateClient();
+        EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(fullText);
 
         foreach (TextChunk chunk in chunks)
         {
-            Response<Embeddings> embeddings = await client.GetEmbeddingsAsync(new EmbeddingsOptions(embeddingName, new string[] { fullText }));
+            Response<Embeddings> embeddings = await openAIClient.GetEmbeddingsAsync(embeddingsOptions);
 
             chunk.Embedding = embeddings.Value.Data.First().Embedding;
         }
@@ -68,36 +70,25 @@ public class AzureOpenAIRag : IRag
     /// <returns>List of text chunks matching query</returns>
     public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
     {
-        (OpenAIClient client, string embeddingName) = CreateClient();
+        EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(text);
 
-        Response<Embeddings> embeddings = await client.GetEmbeddingsAsync(new EmbeddingsOptions(embeddingName, new string[] { text }));
+        Response<Embeddings> embeddings = await openAIClient.GetEmbeddingsAsync(embeddingsOptions);
         ReadOnlyMemory<float> embedding = embeddings.Value.Data.First().Embedding;
         List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding);
 
-        return 
-            (from  chunk in chunks
+        return
+            (from chunk in chunks
              select chunk.Content)
             .ToList();
     }
 
-    /// <summary>
-    /// Builds an instance <see cref="OpenAIClient"/>
-    /// </summary>
-    /// <returns><see cref="OpenAIClient"/></returns>
-    /// <exception cref="ArgumentNullException">Thrown if config values not found</exception>
-    (OpenAIClient, string) CreateClient()
+    EmbeddingsOptions GetEmbeddingOptions(string text)
     {
-        string? endpointName = config[GKeys.AzOpenAIEndpointName];
-        ArgumentException.ThrowIfNullOrWhiteSpace(endpointName, nameof(endpointName));
-
         string? embeddingName = config[GKeys.AzOpenAIEmbeddingName];
         ArgumentException.ThrowIfNullOrWhiteSpace(embeddingName, nameof(embeddingName));
 
-        string? key = config[GKeys.AzOpenAIApiKey]; ;
-        ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
+        EmbeddingsOptions embeddingsOptions = new(embeddingName, new string[] { text });
 
-        OpenAIClient client = new OpenAIClient(new Uri(endpointName), new AzureKeyCredential(key));
-
-        return (client, embeddingName);
+        return embeddingsOptions;
     }
 }
