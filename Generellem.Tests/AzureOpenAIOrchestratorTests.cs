@@ -28,7 +28,7 @@ public class AzureOpenAIOrchestratorTests
             .Returns(Task.FromResult(new List<string> { "Search Result" }));
         llmMock
             .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(new AzureOpenAIChatResponse()));
+            .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
         orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceMock.Object, llmMock.Object, ragMock.Object);
     }

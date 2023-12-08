@@ -1,5 +1,11 @@
-﻿using Generellem.Rag;
+﻿using Azure;
+using Azure.AI.OpenAI;
+
+using Generellem.Document.DocumentTypes;
+using Generellem.Llm;
+using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
+using Generellem.Services;
 using Generellem.Services.Azure;
 
 using Microsoft.Extensions.Configuration;
@@ -10,14 +16,90 @@ namespace Generellem.Tests;
 
 public class AzureOpenAIRagTests
 {
+    const int EmbeddingVectorSize = 1536;
+
     Mock<IAzureSearchService> azSearchSvcMock = new();
     Mock<IConfiguration> configMock = new();
+    Mock<IDocumentType> docTypeMock = new();
+    Mock<LlmClientFactory> llmClientFactMock = new();
+    Mock<OpenAIClient> openAIClientMock = new();
+    Mock<Response<Embeddings>> embeddingsMock = new();
 
     IRag azureOpenAIRag;
 
     public AzureOpenAIRagTests()
     {
-        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object);
+        docTypeMock
+            .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
+            .ReturnsAsync("text content");
+
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIEndpointName])
+            .Returns("https://generellem");
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIEmbeddingName])
+            .Returns("generellem-embedding");
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIApiKey])
+            .Returns("generellem-key");
+
+        List<EmbeddingItem> embeddingItems = new()
+        {
+            AzureOpenAIModelFactory.EmbeddingItem(
+                new ReadOnlyMemory<float>(CreateEmbeddingArray()))
+        };
+        Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
+        openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(embeddingsMock.Object);
+        embeddingsMock.SetupGet(m => m.Value).Returns(embeddings);
+        llmClientFactMock.Setup(m => m.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+
+        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object);
+    }
+
+    static float[] CreateEmbeddingArray() => Enumerable.Range(1, EmbeddingVectorSize).Select(i => i * 1f).ToArray();
+
+    [Fact]
+    public async Task EmbedAsync_CallsGetTextAsync()
+    {
+        await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
+
+        docTypeMock.Verify(doc => doc.GetTextAsync(It.IsAny<Stream>(), "file"), Times.Once());
+    }
+
+    [Fact]
+    public async Task EmbedAsync_CallsGetEmbeddingsAsync()
+    {
+        await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
+
+        openAIClientMock.Verify(
+            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()), 
+            Times.Once());
+    }
+
+    [Fact]
+    public async Task EmbedAsync_ReturnsEmbeddedTextChunks()
+    {
+        TextChunk expectedChunk = new()
+        {
+            Content = "Test document text",
+            Embedding = CreateEmbeddingArray(),
+            FileRef = "file"
+        };
+        docTypeMock
+            .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
+            .ReturnsAsync("Test document text");
+
+        List<TextChunk> textChunks = await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
+
+        TextChunk actualChunk = textChunks.First();
+        Assert.Equal(expectedChunk.Content, actualChunk.Content);
+        Assert.Equal(expectedChunk.FileRef, actualChunk.FileRef);
+        float[] expectedEmbedding = expectedChunk.Embedding.ToArray();
+        float[] actualEmbedding = actualChunk.Embedding.ToArray();
+        Assert.Equal(expectedEmbedding.Length, actualEmbedding.Length);
+        for (int i = 0; i < expectedEmbedding.Length; i++)
+            Assert.Equal(expectedEmbedding[i], actualEmbedding[i]);
     }
 
     [Fact]
