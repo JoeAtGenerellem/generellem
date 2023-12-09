@@ -26,6 +26,7 @@ public class AzureOpenAIRagTests
     Mock<Response<Embeddings>> embeddingsMock = new();
 
     IRag azureOpenAIRag;
+    ReadOnlyMemory<float> embedding;
 
     public AzureOpenAIRagTests()
     {
@@ -43,16 +44,25 @@ public class AzureOpenAIRagTests
             .Setup(config => config[GKeys.AzOpenAIApiKey])
             .Returns("generellem-key");
 
+        embedding = new ReadOnlyMemory<float>(CreateEmbeddingArray());
         List<EmbeddingItem> embeddingItems = new()
         {
-            AzureOpenAIModelFactory.EmbeddingItem(
-                new ReadOnlyMemory<float>(CreateEmbeddingArray()))
+            AzureOpenAIModelFactory.EmbeddingItem(embedding)
         };
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
         openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
         embeddingsMock.SetupGet(m => m.Value).Returns(embeddings);
         llmClientFactMock.Setup(m => m.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+
+        var chunks = new List<TextChunk>
+        {
+            new TextChunk { Content = "chunk1" },
+            new TextChunk { Content = "chunk2" }
+        };
+        azSearchSvcMock
+            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>()))
+            .ReturnsAsync(chunks);
 
         azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object);
     }
@@ -73,7 +83,7 @@ public class AzureOpenAIRagTests
         await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
 
         openAIClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()), 
+            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -130,5 +140,41 @@ public class AzureOpenAIRagTests
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
         azSearchSvcMock.Verify(x => x.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks)), Times.Once());
+    }
+
+    [Fact]
+    public async Task SearchAsync_CallsGetEmbeddingsAsync()
+    {
+        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+
+        openAIClientMock.Verify(
+            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+            Times.Once());
+    }
+
+    [Fact]
+    public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
+    {
+        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+
+        azSearchSvcMock.Verify(client => client.SearchAsync<TextChunk>(embedding), Times.Once());
+    }
+
+    [Fact]
+    public async Task SearchAsync_ReturnsChunkContents()
+    {
+        const string ExpectedContent = "chunk1";
+        //var chunks = new List<TextChunk>
+        //{
+        //    new TextChunk { Content = "chunk1" },
+        //    new TextChunk { Content = "chunk2" }
+        //};
+        //azSearchSvcMock
+        //    .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>()))
+        //    .ReturnsAsync(chunks);
+
+        var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+
+        Assert.Equal(ExpectedContent, result.First());
     }
 }
