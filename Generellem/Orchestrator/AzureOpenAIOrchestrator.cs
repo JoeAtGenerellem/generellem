@@ -97,11 +97,11 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
                 List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, fileRef, cancelToken);
                 await Rag.IndexAsync(chunks, cancelToken);
 
-                //Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
+                Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
             }
             else
             {
-                //Console.WriteLine($"Document {doc} is not supported");
+                Console.WriteLine($"Document {doc} is not supported");
             }
 
             if (cancelToken.IsCancellationRequested)
