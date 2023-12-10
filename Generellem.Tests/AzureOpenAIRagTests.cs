@@ -16,8 +16,6 @@ namespace Generellem.Tests;
 
 public class AzureOpenAIRagTests
 {
-    const int EmbeddingVectorSize = 1536;
-
     Mock<IAzureSearchService> azSearchSvcMock = new();
     Mock<IConfiguration> configMock = new();
     Mock<IDocumentType> docTypeMock = new();
@@ -44,7 +42,7 @@ public class AzureOpenAIRagTests
             .Setup(config => config[GKeys.AzOpenAIApiKey])
             .Returns("generellem-key");
 
-        embedding = new ReadOnlyMemory<float>(CreateEmbeddingArray());
+        embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
         List<EmbeddingItem> embeddingItems = new()
         {
             AzureOpenAIModelFactory.EmbeddingItem(embedding)
@@ -66,8 +64,6 @@ public class AzureOpenAIRagTests
 
         azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object);
     }
-
-    static float[] CreateEmbeddingArray() => Enumerable.Range(1, EmbeddingVectorSize).Select(i => i * 1f).ToArray();
 
     [Fact]
     public async Task EmbedAsync_CallsGetTextAsync()
@@ -93,7 +89,7 @@ public class AzureOpenAIRagTests
         TextChunk expectedChunk = new()
         {
             Content = "Test document text",
-            Embedding = CreateEmbeddingArray(),
+            Embedding = TestEmbeddings.CreateEmbeddingArray(),
             FileRef = "file"
         };
         docTypeMock
@@ -164,14 +160,6 @@ public class AzureOpenAIRagTests
     public async Task SearchAsync_ReturnsChunkContents()
     {
         const string ExpectedContent = "chunk1";
-        //var chunks = new List<TextChunk>
-        //{
-        //    new TextChunk { Content = "chunk1" },
-        //    new TextChunk { Content = "chunk2" }
-        //};
-        //azSearchSvcMock
-        //    .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>()))
-        //    .ReturnsAsync(chunks);
 
         var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
