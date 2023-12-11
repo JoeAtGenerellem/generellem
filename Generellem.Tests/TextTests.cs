@@ -1,0 +1,29 @@
+﻿using Generellem.Document.DocumentTypes;
+
+public class TextTests
+{
+    readonly Text text = new();
+
+    [Fact]
+    public void CanProcess_ReturnsTrue()
+    {
+        Assert.True(text.CanProcess);
+    }
+
+    [Fact]
+    public void SupportedExtensions_ContainsTxt()
+    {
+        Assert.Contains(".txt", text.SupportedExtensions);
+    }
+
+    [Fact]
+    public async Task GetTextAsync_ReturnsFileContents()
+    {
+        const string TestFileName = "file.txt";
+        using var stream = File.OpenRead(TestFileName);
+
+        string result = await text.GetTextAsync(stream, TestFileName);
+
+        Assert.Equal("Test file", result);
+    }
+}
