@@ -1,4 +1,5 @@
 ﻿namespace Generellem.Document.DocumentTypes;
+
 public class Text : IDocumentType
 {
     public virtual bool CanProcess { get; set; } = true;
