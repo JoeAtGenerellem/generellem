@@ -1,6 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 
-using Generellem.DataSource;
+using Generellem.DocumentSource;
 using Generellem.Document;
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;

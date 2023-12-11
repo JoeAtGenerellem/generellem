@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace Generellem.DataSource;
+namespace Generellem.DocumentSource;
 
 public class FileSystem : IDocumentSource
 {
@@ -47,7 +47,7 @@ public class FileSystem : IDocumentSource
         }
     }
 
-    static IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
+    public virtual IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
     {
         using FileStream fileStr = File.OpenRead(configPath);
 
@@ -56,7 +56,7 @@ public class FileSystem : IDocumentSource
         return fileSpec ?? Enumerable.Empty<FileSpec>();
     }
 
-    bool IsPathExcluded(string directoryPath)
+    public virtual bool IsPathExcluded(string directoryPath)
     {
         foreach (string xPath in ExcludedPaths)
             if (directoryPath.Contains(xPath))

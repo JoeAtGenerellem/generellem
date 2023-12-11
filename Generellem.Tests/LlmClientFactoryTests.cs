@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 using Moq;
 
-namespace Generellem.Tests;
+namespace Generellem.Llm.Tests;
 
 public class LlmClientFactoryTests
 {

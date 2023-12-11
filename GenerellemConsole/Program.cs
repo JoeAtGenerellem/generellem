@@ -1,7 +1,7 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 
-using Generellem.DataSource;
+using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;

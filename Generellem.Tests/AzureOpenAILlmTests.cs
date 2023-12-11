@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using Azure;
 using Azure.AI.OpenAI;
-using Generellem.Llm.AzureOpenAI;
-using Generellem.Llm;
-using Generellem.Services;
-using Moq;
-using Microsoft.Extensions.Configuration;
-using Azure;
 
-namespace Generellem.Tests;
+using Generellem.Llm.AzureOpenAI;
+using Generellem.Services;
+
+using Microsoft.Extensions.Configuration;
+
+namespace Generellem.Llm.Tests;
 
 public class AzureOpenAILlmTests
 {
