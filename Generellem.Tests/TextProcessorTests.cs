@@ -1,6 +1,4 @@
-﻿using Generellem.Rag;
-
-namespace Generellem.Tests;
+﻿namespace Generellem.Rag.Tests;
 
 public class TextProcessorTests
 {

@@ -7,12 +7,13 @@ using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
 using Generellem.Services;
 using Generellem.Services.Azure;
+using Generellem.Tests;
 
 using Microsoft.Extensions.Configuration;
 
 using Moq;
 
-namespace Generellem.Tests;
+namespace Generellem.Rag.Tests;
 
 public class AzureOpenAIRagTests
 {

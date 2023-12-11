@@ -1,4 +1,4 @@
-﻿using Generellem.DataSource;
+﻿using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Rag;
 

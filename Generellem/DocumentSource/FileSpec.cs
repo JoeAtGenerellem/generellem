@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Generellem.DataSource;
+namespace Generellem.DocumentSource;
 
 public class FileSpec
 {

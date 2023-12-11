@@ -1,4 +1,4 @@
-﻿namespace Generellem.DataSource;
+﻿namespace Generellem.DocumentSource;
 
 public interface IDocumentSource
 {

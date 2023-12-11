@@ -1,16 +1,13 @@
-﻿using Generellem.DataSource;
-using Generellem.Document.DocumentTypes;
+﻿using Generellem.Document.DocumentTypes;
+using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
-using Generellem.Orchestrator;
 using Generellem.Rag;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
 
-using Moq;
-
-namespace Generellem.Tests;
+namespace Generellem.Orchestrator.Tests;
 
 public class AzureOpenAIOrchestratorTests
 {
