@@ -19,15 +19,14 @@ namespace Generellem.Orchestrator;
 /// <remarks>
 /// Inspired byRetrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
+public class AzureOpenAIOrchestrator(
+    IConfiguration config, 
+    IDocumentSource docSource, 
+    ILlm llm, 
+    IRag rag) 
+    : GenerellemOrchestratorBase(docSource, llm, rag)
 {
-    readonly IConfiguration config;
-
-    public AzureOpenAIOrchestrator(IConfiguration config, IDocumentSource docSource, ILlm llm, IRag rag)
-        : base(docSource, llm, rag)
-    {
-        this.config = config;
-    }
+    readonly IConfiguration config = config;
 
     public virtual AzureOpenAIChatResponse? LastResponse { get; set; }
 
@@ -66,11 +65,11 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
 
         ChatMessage userQuery = new(ChatRole.User, requestText);
 
-        List<ChatMessage> messages = new()
-        {
+        List<ChatMessage> messages =
+        [
             new ChatMessage(ChatRole.System, SystemMessage + context),
             userQuery
-        };
+        ];
 
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
@@ -99,14 +98,14 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
         foreach (ChatMessage chatMessage in chatHistory)
             sb.AppendLine($"{chatMessage.Role}: {chatMessage.Content}\n");
 
-        List<ChatMessage> messages = new()
-        {
+        List<ChatMessage> messages =
+        [
             new ChatMessage(
                 ChatRole.System,
                 ContextMessage +
                 $"\n\nChat History: {sb}" +
                 $"\n\nUser's query: {requestText}")
-        };
+        ];
 
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
