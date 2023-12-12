@@ -1,4 +1,6 @@
-﻿using Generellem.Document.DocumentTypes;
+﻿using Azure.AI.OpenAI;
+
+using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
@@ -17,6 +19,7 @@ public class AzureOpenAIOrchestratorTests
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIOrchestrator orchestrator;
+    readonly Queue<ChatMessage> chatHistory = new();
 
     public AzureOpenAIOrchestratorTests()
     {
@@ -36,7 +39,7 @@ public class AzureOpenAIOrchestratorTests
         configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-          orchestrator.AskAsync("Hello", CancellationToken.None));
+          orchestrator.AskAsync("Hello", chatHistory, CancellationToken.None));
     }
 
     [Fact]
@@ -45,7 +48,7 @@ public class AzureOpenAIOrchestratorTests
         configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            orchestrator.AskAsync("Hello", CancellationToken.None));
+            orchestrator.AskAsync("Hello", chatHistory, CancellationToken.None));
     }
 
     [Fact]
@@ -57,9 +60,23 @@ public class AzureOpenAIOrchestratorTests
             .Setup(config => config[GKeys.AzOpenAIDeploymentName])
             .Returns("generellem");
 
-        await orchestrator.AskAsync("Hello", CancellationToken.None);
+        await orchestrator.AskAsync("Hello", chatHistory, CancellationToken.None);
 
-        ragMock.Verify(rag => rag.SearchAsync("Hello", CancellationToken.None), Times.Once());
+        ragMock.Verify(rag => rag.SearchAsync(It.IsAny<string>(), CancellationToken.None), Times.Once());
+    }
+
+    [Fact]
+    public async Task AskAsync_CallsAskAsync()
+    {
+        Mock<IConfigurationSection> configSection = new();
+
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
+            .Returns("generellem");
+
+        await orchestrator.AskAsync("Hello", chatHistory, CancellationToken.None);
+
+        llmMock.Verify(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -73,12 +90,32 @@ public class AzureOpenAIOrchestratorTests
             .Setup(config => config[GKeys.AzOpenAIDeploymentName])
             .Returns("generellem");
 
-        await orchestrator.AskAsync("Hello", CancellationToken.None);
+        await orchestrator.AskAsync("Hello", chatHistory, CancellationToken.None);
 
         llmMock.Verify(llm =>
             llm.AskAsync<AzureOpenAIChatResponse>(
                 It.IsAny<AzureOpenAIChatRequest>(),
                 It.IsAny<CancellationToken>()));
+    }
+
+    [Fact]
+    public async Task AskAsync_PopulatesChatHistory()
+    {
+        const string ExpectedQuery = "What is Generellem?";
+        var searchResults = new List<string> { "result1", "result2" };
+        ragMock
+            .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
+            .Returns("generellem");
+
+        await orchestrator.AskAsync(ExpectedQuery, chatHistory, CancellationToken.None);
+
+        Assert.Single(chatHistory);
+        ChatMessage chatMessage = chatHistory.Peek();
+        Assert.Equal(ChatRole.User, chatMessage.Role);
+        Assert.Equal(ExpectedQuery, chatMessage.Content);
     }
 
     [Fact]

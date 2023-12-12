@@ -9,6 +9,7 @@ using Generellem.Rag;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace Generellem.Orchestrator;
 
@@ -30,7 +31,12 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
 
     public virtual AzureOpenAIChatResponse? LastResponse { get; set; }
 
-    public string? SystemMessage { get; set; } =
+    const string ContextMessage =
+        "You're an AI assistant reading the transcript of a conversation " +
+        "between a user and an assistant. Given the chat history and " +
+        "user's query, infer user real intent.";
+
+    const string SystemMessage =
         "You are a professional AI bot that returns accurate content for busy workers.\n" +
         "Please answer the user's question using only information you can find in the context.\n" +
         "If the user's question is unrelated to the information in the context, say you don't know.\n";
@@ -40,25 +46,66 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
     /// </summary>
     /// <param name="requestText">User's request</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <returns>Azure OpenAI response</returns>
     /// <exception cref="ArgumentNullException">Throws if config values not found</exception>
-    public override async Task<string> AskAsync(string requestText, CancellationToken cancelToken)
+    public override async Task<string> AskAsync(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
     {
         string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
 
-        List<string> searchResponse = await Rag.SearchAsync(requestText, cancelToken);
+        string userIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
 
-        string context = 
+        List<string> searchResponse = await Rag.SearchAsync(userIntent, cancelToken);
+
+        string context =
             "Context: \n\n" +
             "```" +
             string.Join("\n\n", searchResponse) +
             "```\n";
 
+        ChatMessage userQuery = new(ChatRole.User, requestText);
+
         List<ChatMessage> messages = new()
         {
             new ChatMessage(ChatRole.System, SystemMessage + context),
-            new ChatMessage(ChatRole.User, requestText)
+            userQuery
+        };
+
+        ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
+        AzureOpenAIChatRequest request = new(chatCompletionOptions);
+
+        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
+
+        ManageChatHistory(chatHistory, userQuery);
+
+        return LastResponse.Text ?? string.Empty;
+    }
+
+    static void ManageChatHistory(Queue<ChatMessage> chatHistory, ChatMessage userQuery)
+    {
+        const int ChatHistorySize = 5;
+
+        while (chatHistory.Count >= ChatHistorySize)
+            chatHistory.Dequeue();
+
+        chatHistory.Enqueue(userQuery);
+    }
+
+    async Task<string> SummarizeUserIntentAsync(string requestText, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+    {
+        StringBuilder sb = new();
+
+        foreach (ChatMessage chatMessage in chatHistory)
+            sb.AppendLine($"{chatMessage.Role}: {chatMessage.Content}\n");
+
+        List<ChatMessage> messages = new()
+        {
+            new ChatMessage(
+                ChatRole.System,
+                ContextMessage +
+                $"\n\nChat History: {sb}" +
+                $"\n\nUser's query: {requestText}")
         };
 
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
