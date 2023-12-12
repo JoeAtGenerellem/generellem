@@ -1,4 +1,6 @@
-﻿using Generellem.Orchestrator;
+﻿using Azure.AI.OpenAI;
+
+using Generellem.Orchestrator;
 
 using Microsoft.Extensions.Hosting;
 
@@ -72,6 +74,8 @@ internal class GenerellemHostedService : IHostedService
 
         string? userInput;
 
+        Queue<ChatMessage> chatHistory = new();
+
         do
         {
             Console.Write("generellem>");
@@ -80,7 +84,7 @@ internal class GenerellemHostedService : IHostedService
             if (string.IsNullOrWhiteSpace(userInput))
                 continue;
 
-            string response = await orchestrator.AskAsync(userInput, cancelToken);
+            string response = await orchestrator.AskAsync(userInput, chatHistory, cancelToken);
 
             Console.WriteLine($"\n{response}\n");
 

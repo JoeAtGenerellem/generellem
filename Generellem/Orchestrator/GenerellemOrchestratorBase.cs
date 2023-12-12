@@ -1,4 +1,6 @@
-﻿using Generellem.DocumentSource;
+﻿using Azure.AI.OpenAI;
+
+using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Rag;
 
@@ -23,5 +25,5 @@ public abstract class GenerellemOrchestratorBase
 
     public abstract Task ProcessFilesAsync(CancellationToken cancellationToken);
 
-    public abstract Task<string> AskAsync(string message, CancellationToken  cancellationToken);
+    public abstract Task<string> AskAsync(string message, Queue<ChatMessage> chatHistory, CancellationToken  cancellationToken);
 }
