@@ -1,7 +1,14 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure.AI.OpenAI;
+using System.Threading;
+
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
 using Microsoft.Extensions.Configuration;
+
+using Polly;
+using Polly.Retry;
+using System.IO;
 
 namespace Generellem.Services.Azure;
 
@@ -12,12 +19,19 @@ public class AzureBlobService : IAzureBlobService
     readonly string? connStr;
     readonly string? container;
 
+    readonly ResiliencePipeline pipeline;
+
     public AzureBlobService(IConfiguration config)
     {
         this.config = config;
 
         connStr = config[GKeys.AzBlobConnectionString];
         container = config[GKeys.AzBlobContainer];
+
+        pipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions())
+            .AddTimeout(TimeSpan.FromSeconds(3))
+            .Build();
     }
 
     public virtual async Task UploadAsync(string fileName, Stream stream, CancellationToken cancelToken)
@@ -28,7 +42,10 @@ public class AzureBlobService : IAzureBlobService
         ArgumentNullException.ThrowIfNull(stream, nameof(stream));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        await blobClient.UploadAsync(stream, overwrite: true, cancelToken);
+
+        await pipeline.ExecuteAsync(
+            async token => await blobClient.UploadAsync(stream, overwrite: true, token),
+            cancelToken);
     }
 
     public virtual async Task<Stream> DownloadAsync(string fileName, CancellationToken cancelToken)
@@ -38,7 +55,10 @@ public class AzureBlobService : IAzureBlobService
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        BlobDownloadInfo blobInfo = await blobClient.DownloadAsync(cancelToken);
+
+        BlobDownloadInfo blobInfo = await pipeline.ExecuteAsync<BlobDownloadInfo>(
+            async token => await blobClient.DownloadAsync(cancelToken),
+            cancelToken);
 
         return blobInfo.Content;
     }
@@ -50,6 +70,9 @@ public class AzureBlobService : IAzureBlobService
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
         var blobClient = new BlobClient(connStr, container, fileName);
-        await blobClient.DeleteAsync(cancellationToken: cancelToken);
+
+        await pipeline.ExecuteAsync(
+            async token => await blobClient.DeleteAsync(cancellationToken: token),
+            cancelToken);
     }
 }

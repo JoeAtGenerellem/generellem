@@ -3,15 +3,12 @@ using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
-using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Configuration;
-
-using Moq;
 
 namespace Generellem.Rag.Tests;
 
@@ -51,8 +48,8 @@ public class AzureOpenAIRagTests
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
         openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
-        embeddingsMock.SetupGet(m => m.Value).Returns(embeddings);
-        llmClientFactMock.Setup(m => m.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+        embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
+        llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 
         var chunks = new List<TextChunk>
         {
@@ -60,7 +57,7 @@ public class AzureOpenAIRagTests
             new TextChunk { Content = "chunk2" }
         };
         azSearchSvcMock
-            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>()))
+            .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
         azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object);
@@ -116,7 +113,7 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        azSearchSvcMock.Verify(x => x.CreateIndexAsync(), Times.Once());
+        azSearchSvcMock.Verify(srchSvc => srchSvc.CreateIndexAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Fact]
@@ -126,7 +123,9 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        azSearchSvcMock.Verify(x => x.UploadDocumentsAsync(chunks), Times.Once());
+        azSearchSvcMock.Verify(srchSvc => 
+            srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()), 
+            Times.Once());
     }
 
     [Fact]
@@ -136,7 +135,9 @@ public class AzureOpenAIRagTests
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
-        azSearchSvcMock.Verify(x => x.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks)), Times.Once());
+        azSearchSvcMock.Verify(searchSvc => 
+            searchSvc.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks), It.IsAny<CancellationToken>()), 
+            Times.Once());
     }
 
     [Fact]
@@ -154,7 +155,9 @@ public class AzureOpenAIRagTests
     {
         await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-        azSearchSvcMock.Verify(client => client.SearchAsync<TextChunk>(embedding), Times.Once());
+        azSearchSvcMock.Verify(srchSvc => 
+            srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()), 
+            Times.Once());
     }
 
     [Fact]

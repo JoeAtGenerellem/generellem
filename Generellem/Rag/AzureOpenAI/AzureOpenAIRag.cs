@@ -8,6 +8,9 @@ using Generellem.Services.Azure;
 
 using Microsoft.Extensions.Configuration;
 
+using Polly;
+using Polly.Retry;
+
 namespace Generellem.Rag.AzureOpenAI;
 
 /// <summary>
@@ -19,12 +22,18 @@ public class AzureOpenAIRag : IRag
     readonly IConfiguration config;
 
     readonly OpenAIClient openAIClient;
+    readonly ResiliencePipeline pipeline;
 
     public AzureOpenAIRag(IAzureSearchService azSearchSvc, IConfiguration config, LlmClientFactory llmClientFact)
     {
         this.azSearchSvc = azSearchSvc;
         this.config = config;
         this.openAIClient = llmClientFact.CreateOpenAIClient();
+
+        pipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions())
+            .AddTimeout(TimeSpan.FromSeconds(3))
+            .Build();
     }
 
     /// <summary>
@@ -43,7 +52,9 @@ public class AzureOpenAIRag : IRag
 
         foreach (TextChunk chunk in chunks)
         {
-            Response<Embeddings> embeddings = await openAIClient.GetEmbeddingsAsync(embeddingsOptions);
+            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+                async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions),
+                cancellationToken);
 
             chunk.Embedding = embeddings.Value.Data.First().Embedding;
         }
@@ -58,8 +69,8 @@ public class AzureOpenAIRag : IRag
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
     {
-        await azSearchSvc.CreateIndexAsync();
-        await azSearchSvc.UploadDocumentsAsync(chunks);
+        await azSearchSvc.CreateIndexAsync(cancellationToken);
+        await azSearchSvc.UploadDocumentsAsync(chunks, cancellationToken);
     }
 
     /// <summary>
@@ -74,7 +85,7 @@ public class AzureOpenAIRag : IRag
 
         Response<Embeddings> embeddings = await openAIClient.GetEmbeddingsAsync(embeddingsOptions);
         ReadOnlyMemory<float> embedding = embeddings.Value.Data.First().Embedding;
-        List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding);
+        List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding, cancellationToken);
 
         return
             (from chunk in chunks
