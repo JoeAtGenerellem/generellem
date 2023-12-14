@@ -3,10 +3,14 @@ using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
+using Azure.Storage.Blobs;
 
 using Generellem.Rag;
 
 using Microsoft.Extensions.Configuration;
+
+using Polly;
+using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
@@ -22,6 +26,8 @@ public class AzureSearchService : IAzureSearchService
     readonly string? searchServiceEndpoint;
     readonly string? searchServiceIndex;
 
+    readonly ResiliencePipeline pipeline;
+
     public AzureSearchService(IConfiguration config)
     {
         this.config = config;
@@ -29,9 +35,14 @@ public class AzureSearchService : IAzureSearchService
         searchServiceAdminApiKey = config[GKeys.AzSearchServiceAdminApiKey];
         searchServiceEndpoint = config[GKeys.AzSearchServiceEndpoint];
         searchServiceIndex = config[GKeys.AzSearchServiceIndex];
+
+        pipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions())
+            .AddTimeout(TimeSpan.FromSeconds(3))
+            .Build();
     }
 
-    public virtual async Task CreateIndexAsync()
+    public virtual async Task CreateIndexAsync(CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
@@ -62,10 +73,12 @@ public class AzureSearchService : IAzureSearchService
         };
         SearchIndexClient indexClient = new(endpoint, credential);
 
-        await indexClient.CreateOrUpdateIndexAsync(searchIndex);
+        await pipeline.ExecuteAsync(
+            async token => await indexClient.CreateOrUpdateIndexAsync(searchIndex, cancellationToken: token),
+            cancelToken);
     }
 
-    public virtual async Task UploadDocumentsAsync(List<TextChunk> documents)
+    public virtual async Task UploadDocumentsAsync(List<TextChunk> documents, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
@@ -75,10 +88,12 @@ public class AzureSearchService : IAzureSearchService
 
         SearchClient searchClient = new SearchClient(endpoint, searchServiceIndex, credential);
 
-        await searchClient.IndexDocumentsAsync(IndexDocumentsBatch.MergeOrUpload(documents));
+        await pipeline.ExecuteAsync(
+            async token => await searchClient.IndexDocumentsAsync(IndexDocumentsBatch.MergeOrUpload(documents), cancellationToken: token),
+            cancelToken);
     }
 
-    public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding)
+    public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
@@ -96,7 +111,9 @@ public class AzureSearchService : IAzureSearchService
             }
         };
 
-        SearchResults<TResponse> results = await searchClient.SearchAsync<TResponse>(searchOptions);
+        SearchResults<TResponse> results = await pipeline.ExecuteAsync<SearchResults<TResponse>>(
+            async token => await searchClient.SearchAsync<TResponse>(searchOptions, cancellationToken: token),
+            cancelToken);
 
         List<TResponse> chunks =
             (from chunk in results.GetResultsAsync().ToBlockingEnumerable()

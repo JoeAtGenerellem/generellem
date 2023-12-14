@@ -129,10 +129,10 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_ProcessesSupportedDocument()
     {
-        List<FileInfo> fileInfo = new()
-        {
+        List<FileInfo> fileInfo =
+        [
             new FileInfo("file.txt")
-        };
+        ];
         docSourceMock.Setup(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>())).Returns(fileInfo);
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
@@ -145,10 +145,10 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_SkipsUnsupportedDocument()
     {
-        List<FileInfo> fileInfo = new()
-        {
+        List<FileInfo> fileInfo =
+        [
             new FileInfo("file.xyz")
-        };
+        ];
         docSourceMock.Setup(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>())).Returns(fileInfo);
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
