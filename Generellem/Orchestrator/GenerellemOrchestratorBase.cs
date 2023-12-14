@@ -1,4 +1,6 @@
-﻿using Azure.AI.OpenAI;
+﻿using System.Text;
+
+using Azure.AI.OpenAI;
 
 using Generellem.DocumentSource;
 using Generellem.Llm;
@@ -21,6 +23,8 @@ public abstract class GenerellemOrchestratorBase
         this.DocSource = docSource;
         this.Llm = llm;
         this.Rag = rag;
+
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
     public abstract Task ProcessFilesAsync(CancellationToken cancellationToken);

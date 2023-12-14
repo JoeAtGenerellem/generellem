@@ -127,24 +127,24 @@ public class AzureOpenAIOrchestrator : GenerellemOrchestratorBase
         foreach (FileInfo doc in DocSource.GetFiles(cancelToken))
         {
             ArgumentNullException.ThrowIfNull(doc);
-            string path = doc.FullName;
-            ArgumentException.ThrowIfNullOrEmpty(path);
-            string extension = Path.GetExtension(path);
+            string filePath = doc.FullName;
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+            string extension = Path.GetExtension(filePath);
 
             if (string.IsNullOrWhiteSpace(extension))
                 extension = "none";
 
             if (docExtensions.Contains(extension))
             {
-                string fileRef = Path.GetFileName(path);
+                string fileRef = Path.GetFileName(filePath);
 
                 IDocumentType docType = DocumentTypeFactory.Create(fileRef);
-                Stream fileStream = File.OpenRead(path);
+                Stream fileStream = File.OpenRead(filePath);
 
-                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, fileRef, cancelToken);
+                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, filePath, cancelToken);
                 await Rag.IndexAsync(chunks, cancelToken);
 
-                Console.WriteLine($"Document {path} is of type {docType.GetType().Name}");
+                Console.WriteLine($"Document {fileRef} is of type {docType.GetType().Name}");
             }
             else
             {
