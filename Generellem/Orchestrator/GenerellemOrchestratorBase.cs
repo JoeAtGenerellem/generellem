@@ -1,4 +1,6 @@
-﻿using Azure.AI.OpenAI;
+﻿using System.Text;
+
+using Azure.AI.OpenAI;
 
 using Generellem.DocumentSource;
 using Generellem.Llm;
@@ -10,11 +12,20 @@ namespace Generellem.Orchestrator;
 /// Coordinates <see cref="IDocumentSource"/>, <see cref="ILlm"/>, and <see cref="IRag"/>
 /// to coordinate document processing and querying.
 /// </summary>
-public abstract class GenerellemOrchestratorBase(IDocumentSource docSource, ILlm llm, IRag rag)
+public abstract class GenerellemOrchestratorBase
 {
-    protected virtual IDocumentSource DocSource { get; init; } = docSource;
-    protected virtual ILlm Llm { get; init; } = llm;
-    protected virtual IRag Rag { get; init; } = rag;
+    protected virtual IDocumentSource DocSource { get; init; }
+    protected virtual ILlm Llm { get; init; }
+    protected virtual IRag Rag { get; init; }
+
+    public GenerellemOrchestratorBase(IDocumentSource docSource, ILlm llm, IRag rag)
+    {
+        this.DocSource = docSource;
+        this.Llm = llm;
+        this.Rag = rag;
+
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
 
     public abstract Task ProcessFilesAsync(CancellationToken cancellationToken);
 
