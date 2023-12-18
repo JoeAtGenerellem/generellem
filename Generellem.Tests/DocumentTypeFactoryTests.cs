@@ -1,6 +1,7 @@
+using Generellem.Document;
 using Generellem.Document.DocumentTypes;
 
-namespace Generellem.Document.Tests;
+namespace Generellem.DocTypes.Tests;
 
 public class DocumentTypeFactoryTests
 {
