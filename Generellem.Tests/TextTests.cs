@@ -1,5 +1,7 @@
 ﻿using Generellem.Document.DocumentTypes;
 
+namespace Generellem.DocTypes.Tests;
+
 public class TextTests
 {
     readonly Text text = new();
@@ -19,11 +21,17 @@ public class TextTests
     [Fact]
     public async Task GetTextAsync_ReturnsFileContents()
     {
-        const string TestFileName = "file.txt";
+        const string TestFileName = "TestDocs\\file.txt";
         using var stream = File.OpenRead(TestFileName);
 
         string result = await text.GetTextAsync(stream, TestFileName);
 
         Assert.Equal("Test file", result);
+    }
+
+    [Fact]
+    public void CanProcess_IsTrue()
+    {
+        Assert.True(text.CanProcess);
     }
 }

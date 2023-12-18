@@ -131,7 +131,7 @@ public class AzureOpenAIOrchestratorTests
     {
         List<FileInfo> fileInfo =
         [
-            new FileInfo("file.txt")
+            new FileInfo("TestDocs\\file.txt")
         ];
         docSourceMock.Setup(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>())).Returns(fileInfo);
 

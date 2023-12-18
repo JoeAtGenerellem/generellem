@@ -1,49 +1,53 @@
-﻿using Xunit;
-using Moq;
+﻿using System.Text;
+
 using Generellem.Document.DocumentTypes;
-using System.Text;
 
-namespace Generellem.Tests
+namespace Generellem.DocTypes.Tests;
+
+public class WordTests
 {
-    public class WordTests
+    const string DocXFileContents = "Test\r\nDocumentation";
+    const string DocFileContents = "Test\r\n\r\nDocumentation\r\n";
+
+    readonly Mock<Stream> streamMock = new();
+
+    readonly Word word = new();
+
+    public WordTests()
     {
-        const string DocXFileContents = "Test\r\nDocumentation";
-        const string DocFileContents = "Test\r\n\r\nDocumentation\r\n";
+        streamMock.Setup(x => x.Read(It.IsAny<byte[]>(), 0, It.IsAny<int>())).Returns(1);
 
-        readonly Mock<Stream> streamMock = new();
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
 
-        readonly Word word = new();
+    [Fact]
+    public async Task GetTextAsync_Docx_ReturnsText()
+    {
+        var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc1.docx");
 
-        public WordTests()
-        {
-            streamMock.Setup(x => x.Read(It.IsAny<byte[]>(), 0, It.IsAny<int>())).Returns(1);
+        Assert.Equal(DocXFileContents, result);
+    }
 
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        }
+    [Fact]
+    public async Task GetTextAsync_Doc_ReturnsText()
+    {
+        var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc2.doc");
 
-        [Fact]
-        public async Task GetTextAsync_Docx_ReturnsText()
-        {
-            var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc1.docx");
+        Assert.Equal(DocFileContents, result);
+    }
 
-            Assert.Equal(DocXFileContents, result);
-        }
+    [Fact]
+    public async Task GetTextAsync_InvalidExtension_ThrowsException()
+    {
+        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await word.GetTextAsync(streamMock.Object, "test.invalid"));
 
-        [Fact]
-        public async Task GetTextAsync_Doc_ReturnsText()
-        {
-            var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc2.doc");
+        Assert.Equal("Unsupported file format", exception.Message);
+    }
 
-            Assert.Equal(DocFileContents, result);
-        }
-
-        [Fact]
-        public async Task GetTextAsync_InvalidExtension_ThrowsException()
-        {
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
-                await word.GetTextAsync(streamMock.Object, "test.invalid"));
-
-            Assert.Equal("Unsupported file format", exception.Message);
-        }
+    [Fact]
+    public void CanProcess_IsTrue()
+    {
+        Assert.True(word.CanProcess);
     }
 }
