@@ -4,7 +4,7 @@ namespace Generellem.Document.DocumentTypes;
 
 public class Pdf : IDocumentType
 {
-    public virtual bool CanProcess { get; set; } = true;
+    public virtual bool CanProcess => true;
 
     public virtual List<string> SupportedExtensions => new() { ".pdf" };
 

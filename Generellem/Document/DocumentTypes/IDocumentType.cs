@@ -8,7 +8,7 @@ public interface IDocumentType
     /// <summary>
     /// Indicates whether there's support for this document type.
     /// </summary>
-    public bool CanProcess { get; set; }
+    public bool CanProcess { get; }
 
     /// <summary>
     /// Which file extensions an implementation can support.

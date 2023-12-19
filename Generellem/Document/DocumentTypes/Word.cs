@@ -7,7 +7,7 @@ namespace Generellem.Document.DocumentTypes;
 
 public class Word : IDocumentType
 {
-    public virtual bool CanProcess { get; set; } = true;
+    public virtual bool CanProcess => true;
 
     public virtual List<string> SupportedExtensions => new() { ".docx", ".doc" };
 
