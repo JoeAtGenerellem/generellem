@@ -2,7 +2,7 @@
 
 public class Excel : IDocumentType
 {
-    public virtual bool CanProcess { get; set; } = false;
+    public virtual bool CanProcess => false;
 
     public virtual List<string> SupportedExtensions => new() { ".xlsx", ".xls" };
 

@@ -2,7 +2,7 @@
 
 public class Audio : IDocumentType
 {
-    public virtual bool CanProcess { get; set; } = false;
+    public virtual bool CanProcess => false;
 
     public virtual List<string> SupportedExtensions => new() { ".mp3", ".wav", ".ogg" };
 
