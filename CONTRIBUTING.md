@@ -34,6 +34,14 @@ You're welcome to update the documentation in any way that would improve it. Eve
 
 There are various ways to help others. The first is by participating in Issues and Discussions. You can ask questions, answer other people's questions, or just generally participate in any discussion - as long as it's on topic for Generellem. New developers might want to take on an Issue and might need help. In other cases, there might be a new feature of such significant size the people might want to form a team to coordinate the work. The sky is the limit here and everything that you and others do contributes to the community and helps you achieve whatever goals you set out for yourself.
 
+## Handling Issues
+
+Everything is documented on an Issue. Although the Projects feature creates a card, we should change cards to Issues, which have more options like status, tagging, and conversations. It's also advantageous that an Issue appears in both the Projects and Issues pages, making them more visible to people who might not look in another location.
+
+The conversation about an Issue should happen on the issue, rather than Discussions, email, or anywhere else. That creates a history of what we were thinking at that point in time, which matters because people usually have questions about why something was done a certain way. We can look back in time and either see an explanation or make assumptions about what technology might have been most appropriate at that point in time.
+
+When you take an Issue, take ownership of it. This means you ensure you are assigned, the status is up-to-date, all fields are properly updated, and any other information about that issue is recorded. As aluded to in the previous paragraph, the issue is a historical record of what we were thinking at the time and why we made the decisions we did.
+
 ## Submitting Code
 
 Let's say you found something you want to work on, you coordinated the decision, and you have the code written. The next step would be to submit that codes to it goes into the repository. The `main` branch is locked, so you can't just check into it. This is intentional to prevent people from accidentally checking in breaking changes. The following items outline a safer approach:
