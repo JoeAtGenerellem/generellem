@@ -15,14 +15,22 @@ public class AzureOpenAIOrchestratorTests
 {
     readonly Mock<IConfiguration> configMock = new();
     readonly Mock<IDocumentSource> docSourceMock = new();
+    readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIOrchestrator orchestrator;
     readonly Queue<ChatMessage> chatHistory = new();
 
+    readonly List<IDocumentSource> docSources = new();
+
     public AzureOpenAIOrchestratorTests()
     {
+        docSources.Add(docSourceMock.Object);
+
+        docSourceFactoryMock
+            .Setup(fact => fact.GetDocumentSources())
+            .Returns(docSources);
         ragMock
             .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new List<string> { "Search Result" }));
@@ -30,7 +38,7 @@ public class AzureOpenAIOrchestratorTests
             .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
-        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceMock.Object, llmMock.Object, ragMock.Object);
+        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceFactoryMock.Object, llmMock.Object, ragMock.Object);
     }
 
     [Fact]
@@ -121,19 +129,27 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_CallsGetFiles()
     {
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        {
+            yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
+            await Task.CompletedTask;
+        }
+        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
+
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
-        docSourceMock.Verify(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>()), Times.Once());
+        docSourceMock.Verify(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Fact]
     public async Task ProcessFilesAsync_ProcessesSupportedDocument()
     {
-        List<FileInfo> fileInfo =
-        [
-            new FileInfo("TestDocs\\file.txt")
-        ];
-        docSourceMock.Setup(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>())).Returns(fileInfo);
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        {
+            yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
+            await Task.CompletedTask;
+        }
+        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
@@ -145,11 +161,12 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_SkipsUnsupportedDocument()
     {
-        List<FileInfo> fileInfo =
-        [
-            new FileInfo("file.xyz")
-        ];
-        docSourceMock.Setup(docSrc => docSrc.GetFiles(It.IsAny<CancellationToken>())).Returns(fileInfo);
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        {
+            yield return new DocumentInfo("file.xyz", new MemoryStream(), new Unknown());
+            await Task.CompletedTask;
+        }
+        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
