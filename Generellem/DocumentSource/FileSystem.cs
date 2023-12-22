@@ -1,23 +1,18 @@
 ﻿using System.Text.Json;
 
+using Generellem.Document;
+using Generellem.Document.DocumentTypes;
+
 namespace Generellem.DocumentSource;
 
 public class FileSystem : IDocumentSource
 {
-    readonly string[] ExcludedPaths = new string[] { "\\bin", "\\obj", ".git", ".vs" };
+    readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
+    readonly string[] ExcludedPaths = ["\\bin", "\\obj", ".git", ".vs"];
 
-    /// <summary>
-    /// Perform a recursive file search for the entire directory tree from a configured set of paths.
-    /// </summary>
-    /// <remarks>
-    /// This method performs a recursive search through the directory tree rooted at the specified
-    /// paths and returns an enumerable collection of all file paths found. It supports Linux, Mac, and Windows.
-    /// </remarks>
-    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    /// <returns>An enumerable collection of <see cref="FileInfo"/> found in the directory tree.</returns>
-    public virtual IEnumerable<FileInfo> GetFiles(CancellationToken cancelToken)
+    public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync(CancellationToken cancelToken)
     {
-        IEnumerable<FileSpec> fileSpecs = GetPaths();
+        IEnumerable<FileSpec> fileSpecs = await GetPathsAsync();
 
         foreach (var spec in fileSpecs)
         {
@@ -35,8 +30,19 @@ public class FileSystem : IDocumentSource
                     if (!IsPathExcluded(directory.FullName))
                         directories.Enqueue(directory.FullName);
 
-                foreach (var file in directoryInfo.GetFiles())
-                    yield return file;
+                foreach (FileInfo file in directoryInfo.GetFiles())
+                {
+                    if (cancelToken.IsCancellationRequested)
+                        break;
+
+                    string filePath = file.FullName;
+                    string fileRef = Path.GetFileName(filePath);
+
+                    IDocumentType docType = DocumentTypeFactory.Create(fileRef);
+                    Stream fileStream = File.OpenRead(filePath);
+
+                    yield return new DocumentInfo(filePath, fileStream, docType);
+                }
 
                 if (cancelToken.IsCancellationRequested)
                     break;
@@ -47,11 +53,11 @@ public class FileSystem : IDocumentSource
         }
     }
 
-    public virtual IEnumerable<FileSpec> GetPaths(string configPath = nameof(FileSystem) + ".json")
+    public virtual async Task<IEnumerable<FileSpec>> GetPathsAsync(string configPath = nameof(FileSystem) + ".json")
     {
         using FileStream fileStr = File.OpenRead(configPath);
 
-        IEnumerable<FileSpec>? fileSpec = JsonSerializer.Deserialize<IEnumerable<FileSpec>>(fileStr);
+        IEnumerable<FileSpec>? fileSpec = await JsonSerializer.DeserializeAsync<IEnumerable<FileSpec>>(fileStr);
 
         return fileSpec ?? Enumerable.Empty<FileSpec>();
     }

@@ -2,5 +2,5 @@
 
 public interface IDocumentSource
 {
-    IEnumerable<FileInfo> GetFiles(CancellationToken cancellationToken);
+    IAsyncEnumerable<DocumentInfo> GetDocumentsAsync(CancellationToken cancelToken);
 }

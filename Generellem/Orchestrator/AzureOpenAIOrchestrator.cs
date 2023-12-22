@@ -1,15 +1,15 @@
-﻿using Azure.AI.OpenAI;
+﻿using System.Text;
 
-using Generellem.DocumentSource;
-using Generellem.Document;
+using Azure.AI.OpenAI;
+
 using Generellem.Document.DocumentTypes;
+using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
-using System.Text;
 
 namespace Generellem.Orchestrator;
 
@@ -21,10 +21,10 @@ namespace Generellem.Orchestrator;
 /// </remarks>
 public class AzureOpenAIOrchestrator(
     IConfiguration config, 
-    IDocumentSource docSource, 
+    IDocumentSourceFactory docSourceFact, 
     ILlm llm, 
     IRag rag) 
-    : GenerellemOrchestratorBase(docSource, llm, rag)
+    : GenerellemOrchestratorBase(docSourceFact, llm, rag)
 {
     readonly IConfiguration config = config;
 
@@ -121,37 +121,25 @@ public class AzureOpenAIOrchestrator(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     public override async Task ProcessFilesAsync(CancellationToken cancelToken)
     {
-        IEnumerable<string> docExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
+        Type UnknownType = typeof(Unknown);
 
-        foreach (FileInfo doc in DocSource.GetFiles(cancelToken))
-        {
-            ArgumentNullException.ThrowIfNull(doc);
-            string filePath = doc.FullName;
-            ArgumentException.ThrowIfNullOrEmpty(filePath);
-            string extension = Path.GetExtension(filePath);
+        Console.WriteLine($"Processing document sources...");
 
-            if (string.IsNullOrWhiteSpace(extension))
-                extension = "none";
-
-            if (docExtensions.Contains(extension))
+        foreach (IDocumentSource docSource in DocSources)
+            await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
             {
-                string fileRef = Path.GetFileName(filePath);
+                ArgumentNullException.ThrowIfNull(doc);
+                string filePath = doc.FileRef;
+                ArgumentException.ThrowIfNullOrEmpty(filePath);
 
-                IDocumentType docType = DocumentTypeFactory.Create(fileRef);
-                Stream fileStream = File.OpenRead(filePath);
+                if (doc.DocType.GetType() != UnknownType)
+                {
+                    List<TextChunk> chunks = await Rag.EmbedAsync(doc.DocStream, doc.DocType, doc.FileRef, cancelToken);
+                    await Rag.IndexAsync(chunks, cancelToken);
+                }
 
-                List<TextChunk> chunks = await Rag.EmbedAsync(fileStream, docType, filePath, cancelToken);
-                await Rag.IndexAsync(chunks, cancelToken);
-
-                Console.WriteLine($"Document {fileRef} is of type {docType.GetType().Name}");
+                if (cancelToken.IsCancellationRequested)
+                    break;
             }
-            else
-            {
-                Console.WriteLine($"Document {doc} is not supported");
-            }
-
-            if (cancelToken.IsCancellationRequested)
-                break;
-        }
     }
 }

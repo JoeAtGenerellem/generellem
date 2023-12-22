@@ -14,13 +14,13 @@ namespace Generellem.Orchestrator;
 /// </summary>
 public abstract class GenerellemOrchestratorBase
 {
-    protected virtual IDocumentSource DocSource { get; init; }
+    protected virtual IEnumerable<IDocumentSource> DocSources { get; init; }
     protected virtual ILlm Llm { get; init; }
     protected virtual IRag Rag { get; init; }
 
-    public GenerellemOrchestratorBase(IDocumentSource docSource, ILlm llm, IRag rag)
+    public GenerellemOrchestratorBase(IDocumentSourceFactory docSourceFact, ILlm llm, IRag rag)
     {
-        this.DocSource = docSource;
+        this.DocSources = docSourceFact.GetDocumentSources();
         this.Llm = llm;
         this.Rag = rag;
 

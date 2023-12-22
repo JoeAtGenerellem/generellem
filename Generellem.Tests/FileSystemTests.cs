@@ -3,18 +3,17 @@
 public class FileSystemTests
 {
     [Fact]
-    public void GetFiles_ReturnsFiles()
+    public async Task GetFiles_ReturnsFiles()
     {
         FileSpec fileSpec = new() { Path = "C:\\Project" };
         var mockGetPaths = new Mock<FileSystem>();
-        mockGetPaths.Setup(fs => fs.GetPaths(It.IsAny<string>()))
-                    .Returns(new[] { fileSpec });
+        mockGetPaths.Setup(fs => fs.GetPathsAsync(It.IsAny<string>()))
+                    .ReturnsAsync(new[] { fileSpec });
 
         var fileSystem = new FileSystem();
 
-        var result = fileSystem.GetFiles(CancellationToken.None);
-
-        Assert.NotEmpty(result);
+        await foreach (DocumentInfo docInfo in fileSystem.GetDocumentsAsync(CancellationToken.None))
+            Assert.NotEmpty(docInfo.FileRef);
     }
 
     [Theory]
