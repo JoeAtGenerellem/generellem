@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 
 using Generellem.Document.DocumentTypes;
+using Generellem.Services;
 
 using HtmlAgilityPack;
 
@@ -13,7 +14,12 @@ namespace Generellem.DocumentSource;
 /// </summary>
 public class Website : IDocumentSource
 {
-    readonly HttpClient httpClient = new();
+    readonly HttpClient httpClient;
+
+    public Website(IHttpClientFactory httpFact)
+    {
+        this.httpClient = httpFact.Create();
+    }
 
     /// <summary>
     /// Iteratively visits the page of each website for caller processing
@@ -52,7 +58,21 @@ public class Website : IDocumentSource
         while (queue.Any() && !cancelToken.IsCancellationRequested)
         {
             var currentUrl = queue.Dequeue();
-            var htmlDocument = await GetHtmlDocumentAsync(currentUrl);
+
+            string? htmlDocument = null;
+
+            try
+            {
+                htmlDocument = await GetHtmlDocumentAsync(currentUrl, cancelToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nUnable to process URL: {currentUrl}\nDetails: {ex}\n");
+            }
+
+            if (string.IsNullOrEmpty(htmlDocument))
+                continue;
+
             Console.WriteLine($"Ingesting {currentUrl}");
 
             MemoryStream memStream = new(Encoding.UTF8.GetBytes(htmlDocument));
@@ -67,9 +87,9 @@ public class Website : IDocumentSource
         }
     }
 
-    async Task<string> GetHtmlDocumentAsync(string url)
+    async Task<string> GetHtmlDocumentAsync(string url, CancellationToken cancelToken)
     {
-        var response = await httpClient.GetAsync(url);
+        var response = await httpClient.GetAsync(url, cancelToken);
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadAsStringAsync();

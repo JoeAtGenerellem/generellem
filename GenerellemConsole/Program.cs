@@ -4,6 +4,7 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
 using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
+using Generellem.Services;
 using Generellem.Services.Azure;
 
 using GenerellemConsole;
@@ -46,6 +47,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<LlmClientFactory, LlmClientFactory>();
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentSourceFactory, DemoDocumentSourceFactory>();
+    services.AddTransient<IHttpClientFactory, HttpClientFactory>();
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IRag, AzureOpenAIRag>();
     services.AddTransient<GenerellemOrchestratorBase, AzureOpenAIOrchestrator>();
