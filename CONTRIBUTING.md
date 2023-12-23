@@ -30,6 +30,8 @@ There are two main areas of documentation: Markdown in source code and the Wiki.
 
 You're welcome to update the documentation in any way that would improve it. Even spelling corrections and grammar are fine. The standard is US English so we don't accidentally change back and forth between other forms. For the source code Markdown, you'll need to submit a PR, explained below. For the Wiki, you're welcome to do small spelling or gramatical improvements as you need. However, if you want to do an extensive change, please coordinate via Discussion or Issues.
 
+>Important! All documentation must be original - not AI generated. The rationale is that Generellem uses the documentation as proof of concept of how it works by making non-public data consumable. AI generated data pollutes the data source.
+
 ### Helping Others
 
 There are various ways to help others. The first is by participating in Issues and Discussions. You can ask questions, answer other people's questions, or just generally participate in any discussion - as long as it's on topic for Generellem. New developers might want to take on an Issue and might need help. In other cases, there might be a new feature of such significant size the people might want to form a team to coordinate the work. The sky is the limit here and everything that you and others do contributes to the community and helps you achieve whatever goals you set out for yourself.
