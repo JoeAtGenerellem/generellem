@@ -134,6 +134,8 @@ public class AzureOpenAIOrchestrator(
 
                 if (doc.DocType.GetType() != UnknownType)
                 {
+                    Console.WriteLine($"Ingesting {doc.FileRef}");
+
                     List<TextChunk> chunks = await Rag.EmbedAsync(doc.DocStream, doc.DocType, doc.FileRef, cancelToken);
                     await Rag.IndexAsync(chunks, cancelToken);
                 }
