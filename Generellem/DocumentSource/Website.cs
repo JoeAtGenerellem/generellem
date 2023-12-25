@@ -73,8 +73,6 @@ public class Website : IDocumentSource
             if (string.IsNullOrEmpty(htmlDocument))
                 continue;
 
-            Console.WriteLine($"Ingesting {currentUrl}");
-
             MemoryStream memStream = new(Encoding.UTF8.GetBytes(htmlDocument));
             memStream.Position = 0;
 

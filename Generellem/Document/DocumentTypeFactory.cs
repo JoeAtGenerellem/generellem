@@ -14,13 +14,15 @@ public class DocumentTypeFactory
         return extension switch
         {
             ".adoc" or ".asc" or ".asciidoc" => new AsciiDoc(),
+            ".csv" => new Csv(),
             ".docx" or ".doc" => new Word(),
             ".html" => new Html(),
             ".md" => new Markdown(),
             ".pdf" => new Pdf(),
             //".pptx" or ".ppt" => new Powerpoint(),
+            ".tsv" => new Tsv(),
             ".txt" => new Text(),
-            //".xls" or ".xlsx" => new Excel(),
+            ".xls" or ".xlsx" => new Excel(),
             _ => new Unknown(),
         };
     }
