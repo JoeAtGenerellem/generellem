@@ -19,7 +19,7 @@ public class DocumentTypeFactory
             ".html" => new Html(),
             ".md" => new Markdown(),
             ".pdf" => new Pdf(),
-            //".pptx" or ".ppt" => new Powerpoint(),
+            ".pptx" /*or ".ppt"*/ => new Powerpoint(),
             ".tsv" => new Tsv(),
             ".txt" => new Text(),
             ".xls" or ".xlsx" => new Excel(),

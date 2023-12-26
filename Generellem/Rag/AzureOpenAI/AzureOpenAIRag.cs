@@ -69,6 +69,9 @@ public class AzureOpenAIRag : IRag
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
     {
+        if (!chunks.Any())
+            return;
+
         await azSearchSvc.CreateIndexAsync(cancellationToken);
         await azSearchSvc.UploadDocumentsAsync(chunks, cancellationToken);
     }

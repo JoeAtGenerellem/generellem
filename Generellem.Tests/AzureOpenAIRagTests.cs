@@ -109,7 +109,15 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_CallsCreateIndex()
     {
-        var chunks = new List<TextChunk>();
+        List<TextChunk> chunks = new()
+        {
+            new()
+            {
+                Content = "Test document text",
+                Embedding = TestEmbeddings.CreateEmbeddingArray(),
+                FileRef = "file"
+            }
+        };
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -117,9 +125,27 @@ public class AzureOpenAIRagTests
     }
 
     [Fact]
+    public async Task IndexAsync_WithEmptyChunks_DoesNotCallCreateIndex()
+    {
+        List<TextChunk> chunks = new();
+
+        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+
+        azSearchSvcMock.Verify(srchSvc => srchSvc.CreateIndexAsync(It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Fact]
     public async Task IndexAsync_CallsUploadDocuments()
     {
-        var chunks = new List<TextChunk>();
+        List<TextChunk> chunks = new()
+        {
+            new()
+            {
+                Content = "Test document text",
+                Embedding = TestEmbeddings.CreateEmbeddingArray(),
+                FileRef = "file"
+            }
+        };
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -131,13 +157,33 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_CallsUploadDocumentsWithCorrectChunks()
     {
-        var chunks = new List<TextChunk> { /* populate */ };
+        List<TextChunk> chunks = new()
+        {
+            new()
+            {
+                Content = "Test document text",
+                Embedding = TestEmbeddings.CreateEmbeddingArray(),
+                FileRef = "file"
+            }
+        };
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
         azSearchSvcMock.Verify(searchSvc => 
             searchSvc.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks), It.IsAny<CancellationToken>()), 
             Times.Once());
+    }
+
+    [Fact]
+    public async Task IndexAsync_WithEmptyChunks_DoesNotCallUploadDocuments()
+    {
+        List<TextChunk> chunks = new();
+
+        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+
+        azSearchSvcMock.Verify(srchSvc =>
+            srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()),
+            Times.Never());
     }
 
     [Fact]
