@@ -10,6 +10,7 @@ using Generellem.Rag;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Generellem.Orchestrator;
 
@@ -22,7 +23,8 @@ namespace Generellem.Orchestrator;
 public class AzureOpenAIOrchestrator(
     IConfiguration config, 
     IDocumentSourceFactory docSourceFact, 
-    ILlm llm, 
+    ILlm llm,
+    ILogger<AzureOpenAIOrchestrator> logger,
     IRag rag) 
     : GenerellemOrchestratorBase(docSourceFact, llm, rag)
 {
@@ -123,7 +125,7 @@ public class AzureOpenAIOrchestrator(
     {
         Type UnknownType = typeof(Unknown);
 
-        Console.WriteLine($"Processing document sources...");
+        logger.LogInformation(GenerellemLogEvents.Information, $"Processing document sources...");
 
         foreach (IDocumentSource docSource in DocSources)
             await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
@@ -134,7 +136,7 @@ public class AzureOpenAIOrchestrator(
 
                 if (doc.DocType.GetType() != UnknownType)
                 {
-                    Console.WriteLine($"Ingesting {doc.FileRef}");
+                    logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {FileRef}", doc.FileRef);
 
                     List<TextChunk> chunks = await Rag.EmbedAsync(doc.DocStream, doc.DocType, doc.FileRef, cancelToken);
                     await Rag.IndexAsync(chunks, cancelToken);

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 using Generellem.Document;
 using Generellem.Document.DocumentTypes;
@@ -10,7 +11,7 @@ public class FileSystem : IDocumentSource
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
     readonly string[] ExcludedPaths = ["\\bin", "\\obj", ".git", ".vs"];
 
-    public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync(CancellationToken cancelToken)
+    public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
         IEnumerable<FileSpec> fileSpecs = await GetPathsAsync();
 
@@ -21,7 +22,7 @@ public class FileSystem : IDocumentSource
             var directories = new Queue<string>();
             directories.Enqueue(path);
 
-            while (directories.Any())
+            while (directories.Count is not 0)
             {
                 var currentDirectory = directories.Dequeue();
                 var directoryInfo = new DirectoryInfo(currentDirectory);

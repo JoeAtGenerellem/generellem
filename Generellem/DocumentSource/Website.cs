@@ -7,19 +7,19 @@ using Generellem.Services;
 
 using HtmlAgilityPack;
 
+using Microsoft.Extensions.Logging;
+
 namespace Generellem.DocumentSource;
 
 /// <summary>
 /// Manages ingestion of an entire website
 /// </summary>
-public class Website : IDocumentSource
+public class Website(
+    IHttpClientFactory httpFact, ILogger<Website> logger) 
+    : IDocumentSource
 {
-    readonly HttpClient httpClient;
-
-    public Website(IHttpClientFactory httpFact)
-    {
-        this.httpClient = httpFact.Create();
-    }
+    readonly HttpClient httpClient = httpFact.Create();
+    readonly ILogger<Website> logger = logger;
 
     /// <summary>
     /// Iteratively visits the page of each website for caller processing
@@ -39,7 +39,7 @@ public class Website : IDocumentSource
         }
     }
 
-    async Task<IEnumerable<WebSpec>> GetWebsitesAsync()
+    static async Task<IEnumerable<WebSpec>> GetWebsitesAsync()
     {
         using var fileStream = File.OpenRead("Websites.json");
 
@@ -55,7 +55,7 @@ public class Website : IDocumentSource
         var queue = new Queue<string>();
         queue.Enqueue(url);
 
-        while (queue.Any() && !cancelToken.IsCancellationRequested)
+        while (queue.Count is not 0 && !cancelToken.IsCancellationRequested)
         {
             var currentUrl = queue.Dequeue();
 
@@ -65,16 +65,18 @@ public class Website : IDocumentSource
             {
                 htmlDocument = await GetHtmlDocumentAsync(currentUrl, cancelToken);
             }
-            catch (Exception ex)
+            catch (HttpRequestException httpReqEx)
             {
-                Console.WriteLine($"\nUnable to process URL: {currentUrl}\nDetails: {ex}\n");
+                logger.LogWarning(GenerellemLogEvents.HttpError, httpReqEx, "Unable to process URL: {CurrentURL}", currentUrl);
             }
 
             if (string.IsNullOrEmpty(htmlDocument))
                 continue;
 
-            MemoryStream memStream = new(Encoding.UTF8.GetBytes(htmlDocument));
-            memStream.Position = 0;
+            MemoryStream memStream = new(Encoding.UTF8.GetBytes(htmlDocument))
+            {
+                Position = 0
+            };
 
             yield return new DocumentInfo(currentUrl, memStream, html);
 
@@ -90,10 +92,10 @@ public class Website : IDocumentSource
         var response = await httpClient.GetAsync(url, cancelToken);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadAsStringAsync();
+        return await response.Content.ReadAsStringAsync(cancelToken);
     }
 
-    IEnumerable<string> GetLinks(string htmlDocument, string baseUrl)
+    static List<string> GetLinks(string htmlDocument, string baseUrl)
     {
         var doc = new HtmlDocument();
         doc.LoadHtml(htmlDocument);

@@ -1,19 +1,19 @@
 ﻿using Generellem.Services;
 
+using Microsoft.Extensions.Logging;
+
 namespace Generellem.DocumentSource;
 
-public class DemoDocumentSourceFactory : IDocumentSourceFactory
+public class DemoDocumentSourceFactory(
+    IHttpClientFactory httpFact, ILogger<Website> logger) 
+    : IDocumentSourceFactory
 {
-    readonly IHttpClientFactory httpFact;
-
-    public DemoDocumentSourceFactory(IHttpClientFactory httpFact)
-    {
-        this.httpFact = httpFact;
-    }
+    readonly IHttpClientFactory httpFact = httpFact;
+    readonly ILogger<Website> logger = logger;
 
     public IEnumerable<IDocumentSource> GetDocumentSources() => 
         [
             new FileSystem(),
-            new Website(httpFact)
+            new Website(httpFact, logger)
         ];
 }

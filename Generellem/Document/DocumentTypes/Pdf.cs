@@ -8,7 +8,7 @@ public class Pdf : IDocumentType
 
     public virtual List<string> SupportedExtensions => new() { ".pdf" };
 
-    public virtual async Task<string> GetTextAsync(Stream documentStream, string fileName)
+    public virtual async Task<string> GetTextAsync(Stream? documentStream, string fileName)
     {
         ArgumentNullException.ThrowIfNull(documentStream, nameof(documentStream));
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
