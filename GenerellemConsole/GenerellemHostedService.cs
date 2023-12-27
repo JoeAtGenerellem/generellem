@@ -1,8 +1,10 @@
 ﻿using Azure.AI.OpenAI;
 
 using Generellem.Orchestrator;
+using Generellem.Services;
 
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace GenerellemConsole;
 
@@ -11,7 +13,8 @@ namespace GenerellemConsole;
 /// </summary>
 internal class GenerellemHostedService(
     GenerellemOrchestratorBase orchestrator, 
-    IHostApplicationLifetime lifetime) 
+    IHostApplicationLifetime lifetime,
+    ILogger<GenerellemHostedService> logger)
     : IHostedService
 {
     readonly GenerellemOrchestratorBase orchestrator = orchestrator;
@@ -35,7 +38,7 @@ internal class GenerellemHostedService(
         }
         catch (OperationCanceledException opcEx)
         {
-            Console.WriteLine($"Operation Canceled - Details\n\n{opcEx}");
+            logger.LogError(GenerellemLogEvents.Cancelled, opcEx, "Operation Canceled");
         }
         finally
         {

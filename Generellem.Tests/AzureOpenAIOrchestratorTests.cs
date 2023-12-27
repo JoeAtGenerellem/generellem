@@ -8,6 +8,7 @@ using Generellem.Rag;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Generellem.Orchestrator.Tests;
 
@@ -17,12 +18,13 @@ public class AzureOpenAIOrchestratorTests
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
     readonly Mock<ILlm> llmMock = new();
+    readonly Mock<ILogger<AzureOpenAIOrchestrator>> loggerMock = new();
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIOrchestrator orchestrator;
     readonly Queue<ChatMessage> chatHistory = new();
 
-    readonly List<IDocumentSource> docSources = new();
+    readonly List<IDocumentSource> docSources = [];
 
     public AzureOpenAIOrchestratorTests()
     {
@@ -38,7 +40,7 @@ public class AzureOpenAIOrchestratorTests
             .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
-        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceFactoryMock.Object, llmMock.Object, ragMock.Object);
+        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceFactoryMock.Object, llmMock.Object, loggerMock.Object, ragMock.Object);
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_CallsGetFiles()
     {
-        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
             yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
             await Task.CompletedTask;
@@ -144,7 +146,7 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_ProcessesSupportedDocument()
     {
-        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
             yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
             await Task.CompletedTask;
@@ -161,7 +163,7 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_SkipsUnsupportedDocument()
     {
-        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
             yield return new DocumentInfo("file.xyz", new MemoryStream(), new Unknown());
             await Task.CompletedTask;

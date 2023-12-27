@@ -6,9 +6,9 @@ public class PdfTests
 {
     const string PdfFileContents = "Test Documentation ";
 
-    Mock<Stream> streamMock = new();
+    readonly Mock<Stream> streamMock = new();
 
-    Pdf pdf = new();
+    readonly Pdf pdf = new();
 
     [Fact]
     public async Task GetTextAsync_WithValidPdf_ReturnsText()
