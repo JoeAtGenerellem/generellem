@@ -3,44 +3,34 @@ using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
-using Azure.Storage.Blobs;
 
 using Generellem.Rag;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 using Polly;
 using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureSearchService : IAzureSearchService
+public class AzureSearchService(IConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
 {
     const int VectorSearchDimensions = 1536;
     const string VectorAlgorithmConfigName = "hnsw-config";
     const string VectorProfileName = "generellem-vector-profile";
 
-    readonly IConfiguration config;
+    readonly ILogger<AzureSearchService> logger = logger;
 
-    readonly string? searchServiceAdminApiKey;
-    readonly string? searchServiceEndpoint;
-    readonly string? searchServiceIndex;
+    readonly string? searchServiceAdminApiKey = config[GKeys.AzSearchServiceAdminApiKey];
+    readonly string? searchServiceEndpoint = config[GKeys.AzSearchServiceEndpoint];
+    readonly string? searchServiceIndex = config[GKeys.AzSearchServiceIndex];
 
-    readonly ResiliencePipeline pipeline;
-
-    public AzureSearchService(IConfiguration config)
-    {
-        this.config = config;
-
-        searchServiceAdminApiKey = config[GKeys.AzSearchServiceAdminApiKey];
-        searchServiceEndpoint = config[GKeys.AzSearchServiceEndpoint];
-        searchServiceIndex = config[GKeys.AzSearchServiceIndex];
-
-        pipeline = new ResiliencePipelineBuilder()
+    readonly ResiliencePipeline pipeline = 
+        new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions())
             .AddTimeout(TimeSpan.FromSeconds(3))
             .Build();
-    }
 
     public virtual async Task CreateIndexAsync(CancellationToken cancelToken)
     {
@@ -48,7 +38,7 @@ public class AzureSearchService : IAzureSearchService
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
 
         Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
 
         SearchIndex searchIndex = new(searchServiceIndex)
         {
@@ -73,9 +63,17 @@ public class AzureSearchService : IAzureSearchService
         };
         SearchIndexClient indexClient = new(endpoint, credential);
 
-        await pipeline.ExecuteAsync(
-            async token => await indexClient.CreateOrUpdateIndexAsync(searchIndex, cancellationToken: token),
-            cancelToken);
+        try
+        {
+            await pipeline.ExecuteAsync(
+                async token => await indexClient.CreateOrUpdateIndexAsync(searchIndex, cancellationToken: token),
+                cancelToken);
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }    
     }
 
     public virtual async Task UploadDocumentsAsync(List<TextChunk> documents, CancellationToken cancelToken)
@@ -84,13 +82,21 @@ public class AzureSearchService : IAzureSearchService
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
 
         Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
 
-        SearchClient searchClient = new SearchClient(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
 
-        await pipeline.ExecuteAsync(
-            async token => await searchClient.IndexDocumentsAsync(IndexDocumentsBatch.MergeOrUpload(documents), cancellationToken: token),
-            cancelToken);
+        try
+        {
+            await pipeline.ExecuteAsync(
+                async token => await searchClient.IndexDocumentsAsync(IndexDocumentsBatch.MergeOrUpload(documents), cancellationToken: token),
+                cancelToken);
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }    
     }
 
     public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding, CancellationToken cancelToken)
@@ -99,9 +105,9 @@ public class AzureSearchService : IAzureSearchService
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
 
         Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new AzureKeyCredential(searchServiceAdminApiKey);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
 
-        SearchClient searchClient = new SearchClient(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
 
         var searchOptions = new SearchOptions
         {
@@ -111,15 +117,23 @@ public class AzureSearchService : IAzureSearchService
             }
         };
 
-        SearchResults<TResponse> results = await pipeline.ExecuteAsync<SearchResults<TResponse>>(
-            async token => await searchClient.SearchAsync<TResponse>(searchOptions, cancellationToken: token),
-            cancelToken);
+        try
+        {
+            SearchResults<TResponse> results = await pipeline.ExecuteAsync<SearchResults<TResponse>>(
+                async token => await searchClient.SearchAsync<TResponse>(searchOptions, cancellationToken: token),
+                cancelToken);
+        
+            List<TResponse> chunks =
+                (from chunk in results.GetResultsAsync().ToBlockingEnumerable(cancelToken)
+                 select chunk.Document)
+                .ToList();
 
-        List<TResponse> chunks =
-            (from chunk in results.GetResultsAsync().ToBlockingEnumerable()
-             select chunk.Document)
-            .ToList();
-
-        return chunks;
+            return chunks;
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
     }
 }

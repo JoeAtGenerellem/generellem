@@ -2,9 +2,9 @@
 
 namespace Generellem.Llm.AzureOpenAI;
 
-public class AzureOpenAIChatRequest(ChatCompletionsOptions options) : IChatRequest
+public class AzureOpenAIChatRequest(ChatCompletionsOptions? options) : IChatRequest
 {
-    public ChatCompletionsOptions Options { get; set; } = options;
+    public ChatCompletionsOptions? Options { get; set; } = options;
 
     public virtual string Text 
     {
