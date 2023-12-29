@@ -7,6 +7,7 @@ using Generellem.Services;
 using Generellem.Services.Azure;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 using Polly;
 using Polly.Retry;
@@ -16,25 +17,24 @@ namespace Generellem.Rag.AzureOpenAI;
 /// <summary>
 /// Performs Retrieval-Augmented Generation (RAG) for Azure OpenAI
 /// </summary>
-public class AzureOpenAIRag : IRag
+public class AzureOpenAIRag(
+    IAzureSearchService azSearchSvc, 
+    IConfiguration config, 
+    LlmClientFactory llmClientFact, 
+    ILogger<AzureOpenAIRag> logger) 
+    : IRag
 {
-    readonly IAzureSearchService azSearchSvc;
-    readonly IConfiguration config;
+    readonly IAzureSearchService azSearchSvc = azSearchSvc;
+    readonly IConfiguration config = config;
+    readonly ILogger<AzureOpenAIRag> logger = logger;
 
-    readonly OpenAIClient openAIClient;
-    readonly ResiliencePipeline pipeline;
+    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
-    public AzureOpenAIRag(IAzureSearchService azSearchSvc, IConfiguration config, LlmClientFactory llmClientFact)
-    {
-        this.azSearchSvc = azSearchSvc;
-        this.config = config;
-        this.openAIClient = llmClientFact.CreateOpenAIClient();
-
-        pipeline = new ResiliencePipelineBuilder()
+    readonly ResiliencePipeline pipeline = 
+        new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions())
             .AddTimeout(TimeSpan.FromSeconds(3))
             .Build();
-    }
 
     /// <summary>
     /// Breaks text into chunks and adds an embedding to each chunk based on the text in that chunk
@@ -52,11 +52,19 @@ public class AzureOpenAIRag : IRag
 
         foreach (TextChunk chunk in chunks)
         {
-            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
-                async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions),
-                cancellationToken);
+            try
+            {
+                Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+                    async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
+                    cancellationToken);
 
-            chunk.Embedding = embeddings.Value.Data.First().Embedding;
+                chunk.Embedding = embeddings.Value.Data[0].Embedding;
+            }
+            catch (RequestFailedException rfEx)
+            {
+                logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+                throw;
+            }
         }
 
         return chunks;
@@ -69,7 +77,7 @@ public class AzureOpenAIRag : IRag
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
     {
-        if (!chunks.Any())
+        if (chunks.Count is 0)
             return;
 
         await azSearchSvc.CreateIndexAsync(cancellationToken);
@@ -86,14 +94,25 @@ public class AzureOpenAIRag : IRag
     {
         EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(text);
 
-        Response<Embeddings> embeddings = await openAIClient.GetEmbeddingsAsync(embeddingsOptions);
-        ReadOnlyMemory<float> embedding = embeddings.Value.Data.First().Embedding;
-        List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding, cancellationToken);
+        try
+        {
+            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+                async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
+                cancellationToken);
 
-        return
-            (from chunk in chunks
-             select chunk.Content)
-            .ToList();
+            ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
+            List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embedding, cancellationToken);
+
+            return
+                (from chunk in chunks
+                 select chunk.Content)
+                .ToList();
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
     }
 
     EmbeddingsOptions GetEmbeddingOptions(string text)

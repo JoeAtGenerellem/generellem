@@ -9,20 +9,22 @@ using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Generellem.Rag.Tests;
 
 public class AzureOpenAIRagTests
 {
-    Mock<IAzureSearchService> azSearchSvcMock = new();
-    Mock<IConfiguration> configMock = new();
-    Mock<IDocumentType> docTypeMock = new();
-    Mock<LlmClientFactory> llmClientFactMock = new();
-    Mock<OpenAIClient> openAIClientMock = new();
-    Mock<Response<Embeddings>> embeddingsMock = new();
+    readonly Mock<IAzureSearchService> azSearchSvcMock = new();
+    readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<IDocumentType> docTypeMock = new();
+    readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
+    readonly Mock<LlmClientFactory> llmClientFactMock = new();
+    readonly Mock<OpenAIClient> openAIClientMock = new();
+    readonly Mock<Response<Embeddings>> embeddingsMock = new();
 
-    IRag azureOpenAIRag;
-    ReadOnlyMemory<float> embedding;
+    readonly AzureOpenAIRag azureOpenAIRag;
+    readonly ReadOnlyMemory<float> embedding;
 
     public AzureOpenAIRagTests()
     {
@@ -41,26 +43,26 @@ public class AzureOpenAIRagTests
             .Returns("generellem-key");
 
         embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
-        List<EmbeddingItem> embeddingItems = new()
-        {
+        List<EmbeddingItem> embeddingItems =
+        [
             AzureOpenAIModelFactory.EmbeddingItem(embedding)
-        };
+        ];
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
         openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
         embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 
-        var chunks = new List<TextChunk>
-        {
-            new TextChunk { Content = "chunk1" },
-            new TextChunk { Content = "chunk2" }
-        };
+        List<TextChunk> chunks =
+        [
+            new() { Content = "chunk1" },
+            new() { Content = "chunk2" }
+        ];
         azSearchSvcMock
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object);
+        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object, logMock.Object);
     }
 
     [Fact]
@@ -107,17 +109,38 @@ public class AzureOpenAIRagTests
     }
 
     [Fact]
+    public async Task EmbedAsync_WithRequestFailedException_LogsAnError()
+    {
+        openAIClientMock
+            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () => 
+            await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
     public async Task IndexAsync_CallsCreateIndex()
     {
-        List<TextChunk> chunks = new()
-        {
+        List<TextChunk> chunks =
+        [
             new()
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
                 FileRef = "file"
             }
-        };
+        ];
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -127,7 +150,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_WithEmptyChunks_DoesNotCallCreateIndex()
     {
-        List<TextChunk> chunks = new();
+        List<TextChunk> chunks = [];
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -137,15 +160,15 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_CallsUploadDocuments()
     {
-        List<TextChunk> chunks = new()
-        {
+        List<TextChunk> chunks =
+        [
             new()
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
                 FileRef = "file"
             }
-        };
+        ];
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -157,15 +180,15 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_CallsUploadDocumentsWithCorrectChunks()
     {
-        List<TextChunk> chunks = new()
-        {
+        List<TextChunk> chunks =
+        [
             new()
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
                 FileRef = "file"
             }
-        };
+        ];
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -177,7 +200,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task IndexAsync_WithEmptyChunks_DoesNotCallUploadDocuments()
     {
-        List<TextChunk> chunks = new();
+        List<TextChunk> chunks = [];
 
         await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
 
@@ -214,5 +237,47 @@ public class AzureOpenAIRagTests
         var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
         Assert.Equal(ExpectedContent, result.First());
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
+    {
+        openAIClientMock
+            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
+    {
+        azSearchSvcMock
+            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
     }
 }

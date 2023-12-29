@@ -2,15 +2,14 @@
 using Azure.AI.OpenAI;
 
 using Generellem.Llm.AzureOpenAI;
-using Generellem.Services;
 
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Generellem.Llm.Tests;
 
 public class AzureOpenAILlmTests
 {
-    readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<ILogger<AzureOpenAILlm>> logMock = new();
     readonly Mock<LlmClientFactory> llmClientFactMock = new();
     readonly Mock<OpenAIClient> openAIClientMock = new();
     readonly Mock<Response<ChatCompletions>> completionsMock = new();
@@ -19,13 +18,6 @@ public class AzureOpenAILlmTests
 
     public AzureOpenAILlmTests()
     {
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIEndpointName])
-            .Returns("https://generellem");
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIApiKey])
-            .Returns("generellem-key");
-
         List<ChatChoice> chatChoices =
         [
             AzureOpenAIModelFactory.ChatChoice(
@@ -40,15 +32,14 @@ public class AzureOpenAILlmTests
         completionsMock.SetupGet(m => m.Value).Returns(completions);
         llmClientFactMock.Setup(m => m.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 
-        llm = new AzureOpenAILlm(configMock.Object, llmClientFactMock.Object);
+        llm = new AzureOpenAILlm(llmClientFactMock.Object, logMock.Object);
     }
+
     [Fact]
     public void TestAskAsync_WithNullEndpoint_ThrowsArgumentException()
     {
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Assert.ThrowsAsync<ArgumentException>(() =>
             llm.AskAsync<IChatResponse>(null, CancellationToken.None));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
     }
 
     [Fact]
@@ -68,11 +59,32 @@ public class AzureOpenAILlmTests
     [Fact]
     public void TestAskAsync_WithNullCompletionsOptions_ThrowsArgumentNullException()
     {
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         var request = new AzureOpenAIChatRequest(null);
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         Assert.ThrowsAsync<ArgumentNullException>(() =>
             llm.AskAsync<IChatResponse>(request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AskAsync_WithRequestFailedExceptionOnGetChatCompletions_LogsAnError()
+    {
+        AzureOpenAIChatRequest request = new(new ChatCompletionsOptions("mydeployment", [new ChatMessage()]));
+
+        openAIClientMock
+            .Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            await llm.AskAsync<IChatResponse>(request, CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
     }
 }

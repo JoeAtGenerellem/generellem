@@ -31,7 +31,7 @@ public class LlmClientFactory
         string? key = config[GKeys.AzOpenAIApiKey]; ;
         ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
 
-        OpenAIClient client = new OpenAIClient(new Uri(endpointName), new AzureKeyCredential(key));
+        OpenAIClient client = new(new Uri(endpointName), new AzureKeyCredential(key));
 
         return client;
     }
