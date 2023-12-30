@@ -9,6 +9,7 @@ namespace Generellem.DocumentSource;
 public class FileSystem : IDocumentSource
 {
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
+    readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
     readonly string[] ExcludedPaths = ["\\bin", "\\obj", ".git", ".vs"];
 
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
@@ -42,7 +43,7 @@ public class FileSystem : IDocumentSource
                     IDocumentType docType = DocumentTypeFactory.Create(fileRef);
                     Stream fileStream = File.OpenRead(filePath);
 
-                    yield return new DocumentInfo(filePath, fileStream, docType);
+                    yield return new DocumentInfo(DocSource, filePath, fileStream, docType);
                 }
 
                 if (cancelToken.IsCancellationRequested)

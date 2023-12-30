@@ -14,6 +14,8 @@ namespace Generellem.Orchestrator.Tests;
 
 public class AzureOpenAIOrchestratorTests
 {
+    readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
+
     readonly Mock<IConfiguration> configMock = new();
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
@@ -131,9 +133,9 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_CallsGetFiles()
     {
-        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
+            yield return new DocumentInfo(DocSource, "TestDocs\\file.txt", new MemoryStream(), new Text());
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
@@ -146,9 +148,9 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_ProcessesSupportedDocument()
     {
-        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo("TestDocs\\file.txt", new MemoryStream(), new Text());
+            yield return new DocumentInfo(DocSource, "TestDocs\\file.txt", new MemoryStream(), new Text());
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
@@ -163,9 +165,9 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_SkipsUnsupportedDocument()
     {
-        static async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo("file.xyz", new MemoryStream(), new Unknown());
+            yield return new DocumentInfo(DocSource, "file.xyz", new MemoryStream(), new Unknown());
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);

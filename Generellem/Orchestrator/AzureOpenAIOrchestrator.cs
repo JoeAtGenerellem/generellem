@@ -131,6 +131,8 @@ public class AzureOpenAIOrchestrator(
             await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
             {
                 ArgumentNullException.ThrowIfNull(doc);
+                ArgumentNullException.ThrowIfNull(doc.DocStream);
+                ArgumentNullException.ThrowIfNull(doc.DocType);
                 string filePath = doc.FileRef;
                 ArgumentException.ThrowIfNullOrEmpty(filePath);
 
