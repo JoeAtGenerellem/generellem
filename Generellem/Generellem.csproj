@@ -19,7 +19,7 @@
     <PackageReference Include="Azure.Search.Documents" Version="11.5.1" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.0.0" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.55" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -29,7 +29,9 @@
     <PackageReference Include="NPOI.HWPFCore" Version="2.3.0.1" />
     <PackageReference Include="PdfPig" Version="0.1.8" />
     <PackageReference Include="Polly.Core" Version="8.2.0" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="SkiaSharp" Version="2.88.6" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>
 

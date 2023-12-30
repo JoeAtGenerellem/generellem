@@ -20,6 +20,7 @@ public class Website(
 {
     readonly HttpClient httpClient = httpFact.Create();
     readonly ILogger<Website> logger = logger;
+    readonly string DocSource = $"{Environment.MachineName}:{nameof(Website)}";
 
     /// <summary>
     /// Iteratively visits the page of each website for caller processing
@@ -78,7 +79,7 @@ public class Website(
                 Position = 0
             };
 
-            yield return new DocumentInfo(currentUrl, memStream, html);
+            yield return new DocumentInfo(DocSource, currentUrl, memStream, html);
 
             var links = GetLinks(htmlDocument, url);
 
