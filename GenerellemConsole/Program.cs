@@ -4,11 +4,13 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Orchestrator;
 using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
+using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 
 using GenerellemConsole;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -44,11 +46,14 @@ void ConfigureServices(IServiceCollection services)
 {
     services.AddHostedService<GenerellemHostedService>();
 
+    services.AddTransient<GenerellemContext>();
+    services.AddTransient<GenerellemOrchestratorBase, AzureOpenAIOrchestrator>();
     services.AddTransient<LlmClientFactory, LlmClientFactory>();
+
     services.AddTransient<IAzureSearchService, AzureSearchService>();
+    services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, DemoDocumentSourceFactory>();
     services.AddTransient<IHttpClientFactory, HttpClientFactory>();
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IRag, AzureOpenAIRag>();
-    services.AddTransient<GenerellemOrchestratorBase, AzureOpenAIOrchestrator>();
 }

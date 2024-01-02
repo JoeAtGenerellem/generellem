@@ -12,7 +12,7 @@ namespace Generellem.DocumentSource.Tests
             MemoryStream docStream = new();
             Text docType = new();
 
-            DocumentInfo docInfo = new(ExpectedDocSource, ExpectedFilePath, docStream, docType);
+            DocumentInfo docInfo = new(ExpectedDocSource, docStream, docType, ExpectedFilePath);
 
             Assert.Equal($"{ExpectedDocSource}@{ExpectedFilePath}", docInfo.FileRef);
             Assert.Same(docStream, docInfo.DocStream);

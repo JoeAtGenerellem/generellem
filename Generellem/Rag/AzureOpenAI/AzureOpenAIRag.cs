@@ -39,14 +39,13 @@ public class AzureOpenAIRag(
     /// <summary>
     /// Breaks text into chunks and adds an embedding to each chunk based on the text in that chunk
     /// </summary>
-    /// <param name="documentStream"><see cref="Stream"/> to read data from a document</param>
+    /// <param name="fullText">Full document text</param>
     /// <param name="docType"><see cref="IDocumentType"/> for extracting text from document</param>
     /// <param name="fileRef">Reference to file. e.g. either a path, url, or some other indicator of where the file came from</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns>List of <see cref="TextChunk"/></returns>
-    public virtual async Task<List<TextChunk>> EmbedAsync(Stream documentStream, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
+    public virtual async Task<List<TextChunk>> EmbedAsync(string fullText, IDocumentType docType, string fileRef, CancellationToken cancellationToken)
     {
-        string fullText = await docType.GetTextAsync(documentStream, fileRef);
         List<TextChunk> chunks = TextProcessor.BreakIntoChunks(fullText, fileRef);
         EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(fullText);
 

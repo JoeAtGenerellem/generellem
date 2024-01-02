@@ -1,7 +1,4 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-
-namespace Generellem.Rag;
+﻿namespace Generellem.Rag;
 
 /// <summary>
 /// Various methods for processing text

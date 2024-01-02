@@ -18,15 +18,16 @@ public class FileSystem : IDocumentSource
 
         foreach (var spec in fileSpecs)
         {
-            if (spec?.Path is not string path) continue;
+            if (spec?.Path is not string path)
+                continue;
 
-            var directories = new Queue<string>();
+            Queue<string> directories = new();
             directories.Enqueue(path);
 
             while (directories.Count is not 0)
             {
-                var currentDirectory = directories.Dequeue();
-                var directoryInfo = new DirectoryInfo(currentDirectory);
+                string currentDirectory = directories.Dequeue();
+                DirectoryInfo directoryInfo = new(currentDirectory);
 
                 foreach (var directory in directoryInfo.GetDirectories())
                     if (!IsPathExcluded(directory.FullName))
@@ -34,16 +35,16 @@ public class FileSystem : IDocumentSource
 
                 foreach (FileInfo file in directoryInfo.GetFiles())
                 {
-                    if (cancelToken.IsCancellationRequested)
-                        break;
-
                     string filePath = file.FullName;
-                    string fileRef = Path.GetFileName(filePath);
+                    string fileName = Path.GetFileName(filePath);
 
-                    IDocumentType docType = DocumentTypeFactory.Create(fileRef);
+                    IDocumentType docType = DocumentTypeFactory.Create(fileName);
                     Stream fileStream = File.OpenRead(filePath);
 
-                    yield return new DocumentInfo(DocSource, filePath, fileStream, docType);
+                    yield return new DocumentInfo(DocSource, fileStream, docType, filePath);
+
+                    if (cancelToken.IsCancellationRequested)
+                        break;
                 }
 
                 if (cancelToken.IsCancellationRequested)

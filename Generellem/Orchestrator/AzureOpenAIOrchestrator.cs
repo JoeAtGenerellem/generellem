@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography;
+using System.Text;
 
 using Azure.AI.OpenAI;
 
@@ -7,6 +8,7 @@ using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
+using Generellem.Repository;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
@@ -22,6 +24,7 @@ namespace Generellem.Orchestrator;
 /// </remarks>
 public class AzureOpenAIOrchestrator(
     IConfiguration config, 
+    IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact, 
     ILlm llm,
     ILogger<AzureOpenAIOrchestrator> logger,
@@ -35,7 +38,7 @@ public class AzureOpenAIOrchestrator(
     const string ContextMessage =
         "You're an AI assistant reading the transcript of a conversation " +
         "between a user and an assistant. Given the chat history and " +
-        "user's query, infer user real intent.";
+        "user's query, infer the user's real intent.";
 
     const string SystemMessage =
         "You are a professional AI bot that returns accurate content for busy workers.\n" +
@@ -123,8 +126,6 @@ public class AzureOpenAIOrchestrator(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     public override async Task ProcessFilesAsync(CancellationToken cancelToken)
     {
-        Type UnknownType = typeof(Unknown);
-
         logger.LogInformation(GenerellemLogEvents.Information, $"Processing document sources...");
 
         foreach (IDocumentSource docSource in DocSources)
@@ -133,19 +134,52 @@ public class AzureOpenAIOrchestrator(
                 ArgumentNullException.ThrowIfNull(doc);
                 ArgumentNullException.ThrowIfNull(doc.DocStream);
                 ArgumentNullException.ThrowIfNull(doc.DocType);
-                string filePath = doc.FileRef;
-                ArgumentException.ThrowIfNullOrEmpty(filePath);
+                ArgumentException.ThrowIfNullOrEmpty(doc.FilePath);
+                ArgumentException.ThrowIfNullOrEmpty(doc.FileRef);
 
-                if (doc.DocType.GetType() != UnknownType)
-                {
-                    logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {FileRef}", doc.FileRef);
+                if (doc.DocType.GetType() == typeof(Unknown))
+                    continue;
 
-                    List<TextChunk> chunks = await Rag.EmbedAsync(doc.DocStream, doc.DocType, doc.FileRef, cancelToken);
-                    await Rag.IndexAsync(chunks, cancelToken);
-                }
+                string fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.FilePath);
+
+                if (IsDocUnchanged(doc, fullText))
+                    continue;
+
+                logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {FileRef}", doc.FileRef);
+
+                List<TextChunk> chunks = await Rag.EmbedAsync(fullText, doc.DocType, doc.FileRef, cancelToken);
+                await Rag.IndexAsync(chunks, cancelToken);
 
                 if (cancelToken.IsCancellationRequested)
                     break;
             }
+    }
+
+    bool IsDocUnchanged(DocumentInfo doc, string fullText)
+    {
+        string newHash = ComputeSha256Hash(fullText);
+
+        DocumentHash? document = docHashRep.GetDocumentHash(doc.FileRef);
+
+        if (document == null)
+            docHashRep.Insert(new DocumentHash { FileRef = doc.FileRef, Hash = newHash });
+        else if (document.Hash != newHash)
+            docHashRep.Update(document, newHash);
+        else
+            return true;
+
+        return false;
+    }
+
+    static string ComputeSha256Hash(string rawData)
+    {
+        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawData));
+
+        StringBuilder sb = new();
+
+        for (int i = 0; i < bytes.Length; i++)
+            sb.Append(bytes[i].ToString("x2"));
+
+        return sb.ToString();
     }
 }

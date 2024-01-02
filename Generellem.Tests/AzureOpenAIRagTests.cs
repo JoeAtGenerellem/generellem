@@ -66,17 +66,9 @@ public class AzureOpenAIRagTests
     }
 
     [Fact]
-    public async Task EmbedAsync_CallsGetTextAsync()
-    {
-        await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
-
-        docTypeMock.Verify(doc => doc.GetTextAsync(It.IsAny<Stream>(), "file"), Times.Once());
-    }
-
-    [Fact]
     public async Task EmbedAsync_CallsGetEmbeddingsAsync()
     {
-        await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
+        await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
 
         openAIClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
@@ -96,7 +88,7 @@ public class AzureOpenAIRagTests
             .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
             .ReturnsAsync("Test document text");
 
-        List<TextChunk> textChunks = await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None);
+        List<TextChunk> textChunks = await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
 
         TextChunk actualChunk = textChunks.First();
         Assert.Equal(expectedChunk.Content, actualChunk.Content);
@@ -116,7 +108,7 @@ public class AzureOpenAIRagTests
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () => 
-            await azureOpenAIRag.EmbedAsync(Mock.Of<Stream>(), docTypeMock.Object, "file", CancellationToken.None));
+            await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None));
 
         logMock
             .Verify(

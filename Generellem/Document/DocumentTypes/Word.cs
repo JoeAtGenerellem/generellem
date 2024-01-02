@@ -27,10 +27,10 @@ public class Word : IDocumentType
 
     private static string ReadDoc(string filePath)
     {
-        using FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
 
-        HWPFDocument doc = new HWPFDocument(fileStream);
-        WordExtractor wordExtractor = new WordExtractor(doc);
+        HWPFDocument doc = new(fileStream);
+        WordExtractor wordExtractor = new(doc);
 
         return string.Join(Environment.NewLine, wordExtractor.ParagraphText);
     }
