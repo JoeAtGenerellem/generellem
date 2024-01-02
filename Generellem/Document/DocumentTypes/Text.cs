@@ -8,7 +8,7 @@ public class Text : IDocumentType
 
     public virtual async Task<string> GetTextAsync(Stream documentStream, string fileName)
     {
-        using StreamReader reader = new StreamReader(documentStream);
+        using StreamReader reader = new(documentStream);
         return await reader.ReadToEndAsync();
     }
 }

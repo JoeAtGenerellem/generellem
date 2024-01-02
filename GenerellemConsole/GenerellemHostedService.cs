@@ -98,6 +98,7 @@ internal class GenerellemHostedService(
     {
         string bannerMessage =
 """
+
 *-----------------------------------------*
 * Welcome to the Generellem Console Demo! *
 *-----------------------------------------*
@@ -107,11 +108,10 @@ also use this to test new services like RAG Search and new LLMs.
 
 You can start out with a question like, "How do I contribute to Generellem?".
 
-You can ask any question that can be answered because of content from this 
-repository. The root folder has Markdown files, like CONTRIBUTING.md. Also, 
-the Documents folder has a growing list of content, covering supported 
-scenarios. For testing, you can browse those documents and form questions
-based on their content.
+Generellem uses content from this repository to answer questions. The root 
+folder has Markdown files, like CONTRIBUTING.md. Also, the Documents folder 
+has a growing list of content, covering supported scenarios. For testing, 
+you can browse those documents and form questions based on their content.
 
 We'll add more content as time goes by, which will help to more clearly 
 demonstrate how Generellem works.

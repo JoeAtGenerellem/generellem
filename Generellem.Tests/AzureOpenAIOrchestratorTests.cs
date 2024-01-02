@@ -5,6 +5,7 @@ using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
+using Generellem.Repository;
 using Generellem.Services;
 
 using Microsoft.Extensions.Configuration;
@@ -17,6 +18,7 @@ public class AzureOpenAIOrchestratorTests
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
     readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<IDocumentHashRepository> docHashRepMock = new();
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
     readonly Mock<ILlm> llmMock = new();
@@ -42,7 +44,8 @@ public class AzureOpenAIOrchestratorTests
             .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
-        orchestrator = new AzureOpenAIOrchestrator(configMock.Object, docSourceFactoryMock.Object, llmMock.Object, loggerMock.Object, ragMock.Object);
+        orchestrator = new AzureOpenAIOrchestrator(
+            configMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, llmMock.Object, loggerMock.Object, ragMock.Object);
     }
 
     [Fact]
@@ -130,15 +133,20 @@ public class AzureOpenAIOrchestratorTests
         Assert.Equal(ExpectedQuery, chatMessage.Content);
     }
 
-    [Fact]
-    public async Task ProcessFilesAsync_CallsGetFiles()
+    void SetupGetDocumentsAsync(string filePath)
     {
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, "TestDocs\\file.txt", new MemoryStream(), new Text());
+            yield return new DocumentInfo(DocSource, new MemoryStream(), new Text(), filePath);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_CallsGetFiles()
+    {
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
@@ -148,26 +156,22 @@ public class AzureOpenAIOrchestratorTests
     [Fact]
     public async Task ProcessFilesAsync_ProcessesSupportedDocument()
     {
-        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
-        {
-            yield return new DocumentInfo(DocSource, "TestDocs\\file.txt", new MemoryStream(), new Text());
-            await Task.CompletedTask;
-        }
-        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
         ragMock.Verify(
-            rag => rag.EmbedAsync(It.IsAny<Stream>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
+            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
             Times.Once());
     }
 
     [Fact]
     public async Task ProcessFilesAsync_SkipsUnsupportedDocument()
     {
+        SetupGetDocumentsAsync("TestDocs\\file.xyz");
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, "file.xyz", new MemoryStream(), new Unknown());
+            yield return new DocumentInfo(DocSource, new MemoryStream(), new Unknown(), "file.xyz");
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
@@ -175,7 +179,61 @@ public class AzureOpenAIOrchestratorTests
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
         ragMock.Verify(
-            rag => rag.EmbedAsync(It.IsAny<Stream>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_WithNewDocument_InsertsHash()
+    {
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
+        docHashRepMock
+            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
+            .Returns((DocumentHash?)null);
+
+        await orchestrator.ProcessFilesAsync(CancellationToken.None);
+
+        docHashRepMock.Verify(
+            docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_WithChangedDocument_UpdatesHash()
+    {
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
+        docHashRepMock
+            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
+            .Returns(new DocumentHash { FileRef = "", Hash = Guid.NewGuid().ToString() });
+
+        await orchestrator.ProcessFilesAsync(CancellationToken.None);
+
+        docHashRepMock.Verify(
+            docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_WithUnchangedDocument_DoesNotProcess()
+    {
+        // DocumentInfo from SetupGetDocumentsAsync has an empty MemoryStream
+        // that returns an empty string that hashes to SHA256BlankStringHash.
+        const string SHA256BlankStringHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
+        docHashRepMock
+            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
+            .Returns(new DocumentHash { FileRef = "", Hash = SHA256BlankStringHash });
+
+        await orchestrator.ProcessFilesAsync(CancellationToken.None);
+
+        docHashRepMock.Verify(
+            docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),
+            Times.Never);
+        docHashRepMock.Verify(
+            docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
+            Times.Never);
+        ragMock.Verify(
+            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
             Times.Never);
     }
 }

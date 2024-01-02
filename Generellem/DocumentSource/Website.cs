@@ -79,7 +79,7 @@ public class Website(
                 Position = 0
             };
 
-            yield return new DocumentInfo(DocSource, currentUrl, memStream, html);
+            yield return new DocumentInfo(DocSource, memStream, html, currentUrl);
 
             var links = GetLinks(htmlDocument, url);
 
