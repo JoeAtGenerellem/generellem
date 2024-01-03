@@ -8,9 +8,9 @@ public class TextProcessorTests
         string? text = "Hello world";
         string? fileRef = "file1.txt";
 
-        var result = TextProcessor.BreakIntoChunks(text, fileRef);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, fileRef);
 
-        Assert.Single(result);
+        Assert.Single(chunks);
     }
 
     [Fact]
@@ -19,9 +19,9 @@ public class TextProcessorTests
         string? text = new('a', 6000);
         string? fileRef = "file1.txt";
 
-        var result = TextProcessor.BreakIntoChunks(text, fileRef);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, fileRef);
 
-        Assert.True(result.Count > 1);
+        Assert.True(chunks.Count > 1);
     }
 
     [Fact]
@@ -33,10 +33,10 @@ public class TextProcessorTests
         string? text = new('a', 6000);
         string? fileRef = "file1.txt";
 
-        var result = TextProcessor.BreakIntoChunks(text, fileRef);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, fileRef);
 
-        Assert.Equal(FirstChunkSize, result[0].Content.Length);
-        Assert.Equal(SecondChunkSize, result[1].Content.Length);
+        Assert.Equal(FirstChunkSize, chunks[0]?.Content?.Length);
+        Assert.Equal(SecondChunkSize, chunks[1]?.Content?.Length);
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public class TextProcessorTests
         string? text = new string('a', 4995) + "1234567890" + new string('b', 995);
         string? fileRef = "file1.txt";
 
-        var result = TextProcessor.BreakIntoChunks(text, fileRef);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, fileRef);
 
-        Assert.Equal(result[0].Content[^100..], result[1].Content[..100]);
+        Assert.Equal(chunks[0]?.Content?[^100..], chunks[1]?.Content?[..100]);
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public class TextProcessorTests
         string? text = new string('a', 4995) + "1234567890" + new string('b', 995);
         string? fileRef = "file1.txt";
 
-        var result = TextProcessor.BreakIntoChunks(text, fileRef);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, fileRef);
 
-        Assert.Equal(text, result[0].Content[..^100] + result[1].Content);
+        Assert.Equal(text, chunks[0]?.Content?[..^100] + chunks[1].Content);
     }
 }
