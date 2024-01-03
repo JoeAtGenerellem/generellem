@@ -1,4 +1,6 @@
-﻿namespace Generellem.Rag;
+﻿using System.Text;
+
+namespace Generellem.Rag;
 
 /// <summary>
 /// Various methods for processing text
@@ -28,7 +30,7 @@ public class TextProcessor
             chunks.Add(
                 new TextChunk()
                 {
-                    ID = Guid.NewGuid().ToString(),
+                    ID = Convert.ToBase64String(Encoding.UTF8.GetBytes(fileRef)),
                     Content = content,
                     FileRef = fileRef
                 });
