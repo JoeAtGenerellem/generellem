@@ -20,7 +20,7 @@ namespace Generellem.Orchestrator;
 /// Orchestrates Retrieval-Augmented Generation (RAG)
 /// </summary>
 /// <remarks>
-/// Inspired byRetrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
+/// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
 public class AzureOpenAIOrchestrator(
     IConfiguration config, 
@@ -33,14 +33,18 @@ public class AzureOpenAIOrchestrator(
 {
     readonly IConfiguration config = config;
 
-    public virtual AzureOpenAIChatResponse? LastResponse { get; set; }
-
-    const string ContextMessage =
+    /// <summary>
+    /// We use this to summarize the user query, based on recent context.
+    /// </summary>
+    protected string ContextMessage { get; set; } =
         "You're an AI assistant reading the transcript of a conversation " +
         "between a user and an assistant. Given the chat history and " +
         "user's query, infer the user's real intent.";
 
-    const string SystemMessage =
+    /// <summary>
+    /// Instructions to the LLM on how interpret query and respond.
+    /// </summary>
+    public string SystemMessage { get; set; } =
         "You are a professional AI bot that returns accurate content for busy workers.\n" +
         "Please answer the user's question using only information you can find in the context.\n" +
         "If the user's question is unrelated to the information in the context, say you don't know.\n";
@@ -60,12 +64,12 @@ public class AzureOpenAIOrchestrator(
 
         string userIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
 
-        List<string> searchResponse = await Rag.SearchAsync(userIntent, cancelToken);
+        List<string> matchingDocuments = await Rag.SearchAsync(userIntent, cancelToken);
 
         string context =
-            "Context: \n\n" +
+            "\nContext: \n\n" +
             "```" +
-            string.Join("\n\n", searchResponse) +
+            string.Join("\n\n", matchingDocuments) +
             "```\n";
 
         ChatMessage userQuery = new(ChatRole.User, requestText);
@@ -79,14 +83,19 @@ public class AzureOpenAIOrchestrator(
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
 
-        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
+        AzureOpenAIChatResponse lastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
         ManageChatHistory(chatHistory, userQuery);
 
-        return LastResponse.Text ?? string.Empty;
+        return lastResponse.Text ?? string.Empty;
     }
 
-    static void ManageChatHistory(Queue<ChatMessage> chatHistory, ChatMessage userQuery)
+    /// <summary>
+    /// Ensures the latest queries reside in chat history and that chat history doesn't exceed a specified window size.
+    /// </summary>
+    /// <param name="chatHistory"><see cref="Queue{T}"/> of <see cref="ChatMessage"/>, representing the current chat history.</param>
+    /// <param name="userQuery"><see cref="ChatMessage"/> with the most recent user query to add to history.</param>
+    protected virtual void ManageChatHistory(Queue<ChatMessage> chatHistory, ChatMessage userQuery)
     {
         const int ChatHistorySize = 5;
 
@@ -96,7 +105,15 @@ public class AzureOpenAIOrchestrator(
         chatHistory.Enqueue(userQuery);
     }
 
-    async Task<string> SummarizeUserIntentAsync(string requestText, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+    /// <summary>
+    /// Asks the LLM to clarify what the user wants to accomplish based on current query and chat history.
+    /// </summary>
+    /// <param name="userQuery">The question that the user is asking.</param>
+    /// <param name="chatHistory">Context with previous questions the user asked.</param>
+    /// <param name="deploymentName">Name of deployed LLM that we're using.</param>
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// <returns>Clarification of user query, based on context.</returns>
+    protected virtual async Task<string> SummarizeUserIntentAsync(string userQuery, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
     {
         StringBuilder sb = new();
 
@@ -109,15 +126,15 @@ public class AzureOpenAIOrchestrator(
                 ChatRole.System,
                 ContextMessage +
                 $"\n\nChat History: {sb}" +
-                $"\n\nUser's query: {requestText}")
+                $"\n\nUser's query: {userQuery}")
         ];
 
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
 
-        LastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
+        AzureOpenAIChatResponse lastResponse = await Llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
-        return LastResponse.Text ?? string.Empty;
+        return lastResponse.Text ?? string.Empty;
     }
 
     /// <summary>
@@ -129,6 +146,9 @@ public class AzureOpenAIOrchestrator(
         logger.LogInformation(GenerellemLogEvents.Information, $"Processing document sources...");
 
         foreach (IDocumentSource docSource in DocSources)
+        {
+            List<string> fileRefs = new();
+
             await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
             {
                 ArgumentNullException.ThrowIfNull(doc);
@@ -139,6 +159,8 @@ public class AzureOpenAIOrchestrator(
 
                 if (doc.DocType.GetType() == typeof(Unknown))
                     continue;
+
+                fileRefs.Add(doc.FileRef);
 
                 string fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.FilePath);
 
@@ -153,9 +175,23 @@ public class AzureOpenAIOrchestrator(
                 if (cancelToken.IsCancellationRequested)
                     break;
             }
+
+            await Rag.RemoveDeletedFilesAsync(docSource.Prefix, fileRefs, cancelToken);
+        }
     }
 
-    bool IsDocUnchanged(DocumentInfo doc, string fullText)
+    /// <summary>
+    /// Compares hash of new document vs. hash of previous document to determine if anything changed.
+    /// </summary>
+    /// <remarks>
+    /// This is an optimization to ensure we don't update documents that haven't changed.
+    /// If the document doesn't exist in the local DB, it's new and we insert it.
+    /// If the hashes are different, we insert the document into the local DB.
+    /// </remarks>
+    /// <param name="doc"><see cref="DocumentInfo"/> metadata of document.</param>
+    /// <param name="fullText">Document text.</param>
+    /// <returns>True if the current and previous hashes match.</returns>
+    protected virtual bool IsDocUnchanged(DocumentInfo doc, string fullText)
     {
         string newHash = ComputeSha256Hash(fullText);
 
@@ -171,7 +207,12 @@ public class AzureOpenAIOrchestrator(
         return false;
     }
 
-    static string ComputeSha256Hash(string rawData)
+    /// <summary>
+    /// We're using a SHA256 hash to compare documents.
+    /// </summary>
+    /// <param name="rawData">Document Text.</param>
+    /// <returns>Hash of the document text.</returns>
+    protected static string ComputeSha256Hash(string rawData)
     {
         byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawData));
 

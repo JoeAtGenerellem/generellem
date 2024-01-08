@@ -45,7 +45,7 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
             Fields =
             {
                 new SimpleField(nameof(TextChunk.ID), SearchFieldDataType.String) { IsKey = true, IsFilterable = true, IsSortable = true, IsFacetable = true },
-                new SearchableField(nameof(TextChunk.FileRef)) { IsFilterable = true, IsSortable = true },
+                new SearchableField(nameof(TextChunk.FileRef)) { IsFilterable = true, IsSortable = true, IsFacetable = true },
                 new SearchableField(nameof(TextChunk.Content)) { IsFilterable = true },
                 new VectorSearchField(nameof(TextChunk.Embedding), VectorSearchDimensions, VectorProfileName)
             },
@@ -74,6 +74,83 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
             logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
             throw;
         }    
+    }
+
+    public async Task DeleteFileRefsAsync(List<string> idsToDelete, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
+        Uri endpoint = new(searchServiceEndpoint);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+
+        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+
+        var batch = IndexDocumentsBatch.Delete(nameof(TextChunk.ID), idsToDelete);
+        await searchClient.IndexDocumentsAsync(batch, null, cancellationToken);
+    }
+
+    public async Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
+        Uri endpoint = new(searchServiceEndpoint);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+
+        SearchIndexClient indexClient = new SearchIndexClient(endpoint, credential);
+
+        try
+        {
+            SearchIndex index =
+                await pipeline.ExecuteAsync(
+                    async token => await indexClient.GetIndexAsync(searchServiceIndex, cancellationToken),
+                    cancellationToken);
+            return index != null;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // 404 indicates the index does not exist
+            return false;
+        }
+    }
+
+    public async Task<List<TextChunk>> GetFileRefsAsync(string docSourcePrefix, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+
+        Uri endpoint = new(searchServiceEndpoint);
+        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+
+        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+
+        SearchOptions options = new()
+        {
+            Filter = $"search.ismatch('{docSourcePrefix}*', '{nameof(TextChunk.FileRef)}')"
+        };
+        options.Select.Add(nameof(TextChunk.ID));
+        options.Select.Add(nameof(TextChunk.FileRef));
+
+        List<TextChunk> chunks = new();
+
+        try
+        {
+            Response<SearchResults<TextChunk>> response =
+                await pipeline.ExecuteAsync(
+                    async token => await searchClient.SearchAsync<TextChunk>(string.Empty, options, cancellationToken),
+                    cancellationToken);
+
+            await foreach (SearchResult<TextChunk> result in response.Value.GetResultsAsync())
+                chunks.Add(result.Document);
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
+
+        return chunks;
     }
 
     public virtual async Task UploadDocumentsAsync(List<TextChunk> documents, CancellationToken cancelToken)

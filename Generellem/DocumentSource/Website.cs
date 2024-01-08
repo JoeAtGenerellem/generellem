@@ -12,15 +12,16 @@ using Microsoft.Extensions.Logging;
 namespace Generellem.DocumentSource;
 
 /// <summary>
-/// Manages ingestion of an entire website
+/// Manages ingestion of a website
 /// </summary>
 public class Website(
     IHttpClientFactory httpFact, ILogger<Website> logger) 
     : IDocumentSource
 {
+    public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(Website)}";
+
     readonly HttpClient httpClient = httpFact.Create();
     readonly ILogger<Website> logger = logger;
-    readonly string DocSource = $"{Environment.MachineName}:{nameof(Website)}";
 
     /// <summary>
     /// Iteratively visits the page of each website for caller processing
@@ -79,7 +80,7 @@ public class Website(
                 Position = 0
             };
 
-            yield return new DocumentInfo(DocSource, memStream, html, currentUrl);
+            yield return new DocumentInfo(Prefix, memStream, html, currentUrl);
 
             var links = GetLinks(htmlDocument, url);
 

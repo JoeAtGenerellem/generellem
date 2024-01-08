@@ -1,4 +1,5 @@
-﻿namespace Generellem.Repository;
+﻿
+namespace Generellem.Repository;
 
 /// <summary>
 /// DB Operations on Document Hashes
@@ -13,11 +14,24 @@
 public interface IDocumentHashRepository
 {
     /// <summary>
-    /// Queries the document hash based on fileRef.
+    /// Delete the <see cref="DocumentHash"/>.
+    /// </summary>
+    /// <param name="fileRefs">Unique FileRefs for the <see cref="DocumentHash"/>'s to delete.</param>
+    void Delete(List<string> fileRefs);
+
+    /// <summary>
+    /// Queries a <see cref="DocumentHash"/> based on fileRef.
     /// </summary>
     /// <param name="fileRef">Unique name for file.</param>
     /// <returns><see cref="DocumentHash"/> or null if not found.</returns>
     DocumentHash? GetDocumentHash(string fileRef);
+
+    /// <summary>
+    /// Queries for <see cref="DocumentHash"/>'s based on fileRefs.
+    /// </summary>
+    /// <param name="fileRefs">Unique names for files.</param>
+    /// <returns><see cref="List{T}"/> of <see cref="DocumentHash"/>'s.</returns>
+    List<DocumentHash> GetDocumentHashes(List<string> fileRefs);
 
     /// <summary>
     /// This is the first time we've scanned a document, so add a new record.
@@ -28,7 +42,7 @@ public interface IDocumentHashRepository
     /// <summary>
     /// The document has changed and we need to update it's hash value.
     /// </summary>
-    /// <param name="docHash">The existing document hash.</param>
+    /// <param name="docHash">The existing <see cref="DocumentHash"/>.</param>
     /// <param name="hash">The new hash value.</param>
     void Update(DocumentHash docHash, string hash);
 }

@@ -6,12 +6,21 @@ using Generellem.Document.DocumentTypes;
 
 namespace Generellem.DocumentSource;
 
+/// <summary>
+/// Supports ingesting documents from a computer file system
+/// </summary>
 public class FileSystem : IDocumentSource
 {
+    public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(FileSystem)}";
+
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
-    readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
     readonly string[] ExcludedPaths = ["\\bin", "\\obj", ".git", ".vs"];
 
+    /// <summary>
+    /// Based on the config file, scan files.
+    /// </summary>
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// <returns>Enumerable of <see cref="DocumentInfo"/>.</returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
         IEnumerable<FileSpec> fileSpecs = await GetPathsAsync();
@@ -41,7 +50,7 @@ public class FileSystem : IDocumentSource
                     IDocumentType docType = DocumentTypeFactory.Create(fileName);
                     Stream fileStream = File.OpenRead(filePath);
 
-                    yield return new DocumentInfo(DocSource, fileStream, docType, filePath);
+                    yield return new DocumentInfo(Prefix, fileStream, docType, filePath);
 
                     if (cancelToken.IsCancellationRequested)
                         break;
@@ -56,6 +65,11 @@ public class FileSystem : IDocumentSource
         }
     }
 
+    /// <summary>
+    /// Extracts file paths from the config file.
+    /// </summary>
+    /// <param name="configPath">Location of the config file.</param>
+    /// <returns>Enumerable of <see cref="FileSpec"/>.</returns>
     public virtual async Task<IEnumerable<FileSpec>> GetPathsAsync(string configPath = nameof(FileSystem) + ".json")
     {
         using FileStream fileStr = File.OpenRead(configPath);
@@ -65,6 +79,11 @@ public class FileSystem : IDocumentSource
         return fileSpec ?? Enumerable.Empty<FileSpec>();
     }
 
+    /// <summary>
+    /// Helps avoid paths we don't want to follow.
+    /// </summary>
+    /// <param name="directoryPath">Path to check.</param>
+    /// <returns>true if excluded, false if not.</returns>
     public virtual bool IsPathExcluded(string directoryPath)
     {
         foreach (string xPath in ExcludedPaths)
