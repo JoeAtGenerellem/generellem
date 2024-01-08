@@ -4,6 +4,7 @@ using Azure.AI.OpenAI;
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
 using Generellem.Rag.AzureOpenAI;
+using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
@@ -17,6 +18,7 @@ public class AzureOpenAIRagTests
 {
     readonly Mock<IAzureSearchService> azSearchSvcMock = new();
     readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<IDocumentHashRepository> docHashRepMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
     readonly Mock<LlmClientFactory> llmClientFactMock = new();
@@ -48,21 +50,41 @@ public class AzureOpenAIRagTests
             AzureOpenAIModelFactory.EmbeddingItem(embedding)
         ];
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
+
         openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
+
         embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
+
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 
         List<TextChunk> chunks =
         [
-            new() { Content = "chunk1" },
-            new() { Content = "chunk2" }
+            new()
+            {
+                ID = "id1",
+                Content = "chunk1",
+                FileRef = "fileRef1"
+            },
+            new() 
+            {
+                ID = "id2",
+                Content = "chunk2",
+                FileRef = "fileRef2"
+            }
         ];
+        azSearchSvcMock
+            .Setup(srchSvc => srchSvc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        azSearchSvcMock
+            .Setup(srchSvc => srchSvc.GetFileRefsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chunks);
         azSearchSvcMock
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAIRag = new AzureOpenAIRag(azSearchSvcMock.Object, configMock.Object, llmClientFactMock.Object, logMock.Object);
+        azureOpenAIRag = new AzureOpenAIRag(
+            azSearchSvcMock.Object, configMock.Object, docHashRepMock.Object, llmClientFactMock.Object, logMock.Object);
     }
 
     [Fact]
@@ -199,6 +221,32 @@ public class AzureOpenAIRagTests
         azSearchSvcMock.Verify(srchSvc =>
             srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()),
             Times.Never());
+    }
+    
+    [Fact]
+    public async Task RemoveDeletedFilesAsync_WithNoDeletedFiles_DoesNotDeleteAnything()
+    {
+        string docSource = "Localhost:FileSystem";
+        List<string> docSourceFileRefs = new List<string> { "fileRef1", "fileRef2" };
+
+        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceFileRefs, CancellationToken.None);
+
+        azSearchSvcMock.Verify(
+            srch => srch.DeleteFileRefsAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveDeletedFilesAsync_WithDeletedFiles_DeletesCorrectFiles()
+    {
+        string docSource = "Localhost:FileSystem";
+        List<string> docSourceFileRefs = new List<string> { "file1" };
+
+        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceFileRefs, CancellationToken.None);
+
+        azSearchSvcMock.Verify(
+            srch => srch.DeleteFileRefsAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
