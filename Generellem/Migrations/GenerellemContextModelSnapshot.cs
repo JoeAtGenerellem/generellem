@@ -22,7 +22,7 @@ namespace Generellem.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("FileRef")
+                    b.Property<string>("DocumentReference")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Hash")
@@ -30,7 +30,7 @@ namespace Generellem.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FileRef");
+                    b.HasIndex("DocumentReference");
 
                     b.ToTable("DocumentHashes");
                 });

@@ -14,7 +14,7 @@ namespace Generellem.DocumentSource.Tests
 
             DocumentInfo docInfo = new(ExpectedDocSource, docStream, docType, ExpectedFilePath);
 
-            Assert.Equal($"{ExpectedDocSource}@{ExpectedFilePath}", docInfo.FileRef);
+            Assert.Equal($"{ExpectedDocSource}@{ExpectedFilePath}", docInfo.DocumentReference);
             Assert.Same(docStream, docInfo.DocStream);
             Assert.Same(docType, docInfo.DocType);
         }
@@ -24,7 +24,7 @@ namespace Generellem.DocumentSource.Tests
         {
             var docInfo = new DocumentInfo(null, null, null, null);
 
-            Assert.Equal("@", docInfo.FileRef);
+            Assert.Equal("@", docInfo.DocumentReference);
             Assert.Null(docInfo.DocStream);
             Assert.Null(docInfo.DocType);
         }

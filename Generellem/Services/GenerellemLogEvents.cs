@@ -36,4 +36,9 @@ public static class GenerellemLogEvents
     /// We don't have enough information to classify - look at exception details
     /// </summary>
     public static readonly EventId SystemFailure = new(5500, "Unknown System Failure");
+
+    /// <summary>
+    /// Unable to process a document
+    /// </summary>
+    public static readonly EventId DocumentError = new(4422, "Unable to process document");
 }

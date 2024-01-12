@@ -45,7 +45,7 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
             Fields =
             {
                 new SimpleField(nameof(TextChunk.ID), SearchFieldDataType.String) { IsKey = true, IsFilterable = true, IsSortable = true, IsFacetable = true },
-                new SearchableField(nameof(TextChunk.FileRef)) { IsFilterable = true, IsSortable = true, IsFacetable = true },
+                new SearchableField(nameof(TextChunk.DocumentReference)) { IsFilterable = true, IsSortable = true, IsFacetable = true },
                 new SearchableField(nameof(TextChunk.Content)) { IsFilterable = true },
                 new VectorSearchField(nameof(TextChunk.Embedding), VectorSearchDimensions, VectorProfileName)
             },
@@ -76,7 +76,7 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
         }    
     }
 
-    public async Task DeleteFileRefsAsync(List<string> idsToDelete, CancellationToken cancellationToken)
+    public async Task DeleteDocumentReferencesAsync(List<string> idsToDelete, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
@@ -115,7 +115,7 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
         }
     }
 
-    public async Task<List<TextChunk>> GetFileRefsAsync(string docSourcePrefix, CancellationToken cancellationToken)
+    public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
@@ -127,10 +127,10 @@ public class AzureSearchService(IConfiguration config, ILogger<AzureSearchServic
 
         SearchOptions options = new()
         {
-            Filter = $"search.ismatch('{docSourcePrefix}*', '{nameof(TextChunk.FileRef)}')"
+            Filter = $"search.ismatch('{docSourcePrefix}*', '{nameof(TextChunk.DocumentReference)}')"
         };
         options.Select.Add(nameof(TextChunk.ID));
-        options.Select.Add(nameof(TextChunk.FileRef));
+        options.Select.Add(nameof(TextChunk.DocumentReference));
 
         List<TextChunk> chunks = new();
 

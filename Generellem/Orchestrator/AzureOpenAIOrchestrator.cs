@@ -147,7 +147,7 @@ public class AzureOpenAIOrchestrator(
 
         foreach (IDocumentSource docSource in DocSources)
         {
-            List<string> fileRefs = new();
+            List<string> documentReferences = [];
 
             await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
             {
@@ -155,28 +155,37 @@ public class AzureOpenAIOrchestrator(
                 ArgumentNullException.ThrowIfNull(doc.DocStream);
                 ArgumentNullException.ThrowIfNull(doc.DocType);
                 ArgumentException.ThrowIfNullOrEmpty(doc.FilePath);
-                ArgumentException.ThrowIfNullOrEmpty(doc.FileRef);
+                ArgumentException.ThrowIfNullOrEmpty(doc.DocumentReference);
 
                 if (doc.DocType.GetType() == typeof(Unknown))
                     continue;
 
-                fileRefs.Add(doc.FileRef);
+                documentReferences.Add(doc.DocumentReference);
 
-                string fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.FilePath);
+                string fullText;
+                try
+                {
+                    fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.FilePath);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(GenerellemLogEvents.DocumentError, ex, "Unable to process file: {FilePath}", doc.FilePath);
+                    continue;
+                }
 
                 if (IsDocUnchanged(doc, fullText))
                     continue;
 
-                logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {FileRef}", doc.FileRef);
+                logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {DocumentReference}", doc.DocumentReference);
 
-                List<TextChunk> chunks = await Rag.EmbedAsync(fullText, doc.DocType, doc.FileRef, cancelToken);
+                List<TextChunk> chunks = await Rag.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
                 await Rag.IndexAsync(chunks, cancelToken);
 
                 if (cancelToken.IsCancellationRequested)
                     break;
             }
 
-            await Rag.RemoveDeletedFilesAsync(docSource.Prefix, fileRefs, cancelToken);
+            await Rag.RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
         }
     }
 
@@ -195,10 +204,10 @@ public class AzureOpenAIOrchestrator(
     {
         string newHash = ComputeSha256Hash(fullText);
 
-        DocumentHash? document = docHashRep.GetDocumentHash(doc.FileRef);
+        DocumentHash? document = docHashRep.GetDocumentHash(doc.DocumentReference);
 
         if (document == null)
-            docHashRep.Insert(new DocumentHash { FileRef = doc.FileRef, Hash = newHash });
+            docHashRep.Insert(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
         else if (document.Hash != newHash)
             docHashRep.Update(document, newHash);
         else

@@ -27,7 +27,7 @@ public class DocumentInfo(string? docSourcePrefix, Stream? docStream, IDocumentT
     public string? FilePath { get; set; } = filePath;
 
     /// <summary>
-    /// Uniquely defines a file accross document sources.
+    /// Uniquely defines a document accross different sources.
     /// </summary>
-    public string FileRef { get; set; } = $"{docSourcePrefix}@{filePath}";
+    public string DocumentReference { get; set; } = $"{docSourcePrefix}@{filePath}";
 }
