@@ -15,34 +15,34 @@ public class DocumentHashRepository(GenerellemContext ctx) : IDocumentHashReposi
     /// <summary>
     /// Delete the <see cref="DocumentHash"/>.
     /// </summary>
-    /// <param name="fileRefs">Unique FileRefs for the <see cref="DocumentHash"/>'s to delete.</param>
-    public void Delete(List<string> fileRefs)
+    /// <param name="documentReferences">Unique DocumentReferences for the <see cref="DocumentHash"/>'s to delete.</param>
+    public void Delete(List<string> documentReferences)
     {
-        List<DocumentHash> docHashes = GetDocumentHashes(fileRefs);
+        List<DocumentHash> docHashes = GetDocumentHashes(documentReferences);
 
         ctx.DocumentHashes.RemoveRange(docHashes);
         ctx.SaveChanges();
     }
 
     /// <summary>
-    /// Queries a <see cref="DocumentHash"/> based on fileRef.
+    /// Queries a <see cref="DocumentHash"/> based on DocumentReference.
     /// </summary>
-    /// <param name="fileRef">Unique name for file.</param>
+    /// <param name="documentReference">Unique name for file.</param>
     /// <returns><see cref="DocumentHash"/> or null if not found.</returns>
-    public DocumentHash? GetDocumentHash(string fileRef) =>
+    public DocumentHash? GetDocumentHash(string documentReference) =>
         (from docHash in ctx.DocumentHashes
-         where docHash.FileRef == fileRef
+         where docHash.DocumentReference == documentReference
          select docHash)
         .SingleOrDefault();
 
     /// <summary>
-    /// Queries for <see cref="DocumentHash"/>'s based on fileRefs.
+    /// Queries for <see cref="DocumentHash"/>'s based on DocumentReferences.
     /// </summary>
-    /// <param name="fileRefs">Unique names for files.</param>
+    /// <param name="documentReferences">Unique names for files.</param>
     /// <returns><see cref="List{T}"/> of <see cref="DocumentHash"/>'s.</returns>
-    public List<DocumentHash> GetDocumentHashes(List<string> fileRefs) =>
+    public List<DocumentHash> GetDocumentHashes(List<string> documentReferences) =>
         (from docHash in ctx.DocumentHashes
-         where fileRefs.Contains(docHash.FileRef ?? string.Empty)
+         where documentReferences.Contains(docHash.DocumentReference ?? string.Empty)
          select docHash)
         .ToList();
 

@@ -18,6 +18,9 @@ using Microsoft.Extensions.Hosting;
 CancellationTokenSource tokenSource = new();
 
 IHost host = InitializeConfiguration(args);
+
+ConfigureDB();
+
 await host.RunAsync(tokenSource.Token);
 
 IHost InitializeConfiguration(string[] args)
@@ -40,6 +43,31 @@ IHost InitializeConfiguration(string[] args)
 #endif
 
     return builder.Build();
+}
+
+void ConfigureDB()
+{
+    using GenerellemContext ctx = new();
+
+    //try
+    //{
+    //    ctx.Database.EnsureCreated();
+    //}
+    //catch (Exception)
+    //{
+    //    Console.WriteLine("DB already exists.");
+    //}
+
+
+    try
+    {
+        ctx.Database.OpenConnection();
+        ctx.Database.Migrate();
+    }
+    catch (Exception)
+    {
+        Console.WriteLine("Migration is up-to-date.");
+    }
 }
 
 void ConfigureServices(IServiceCollection services)

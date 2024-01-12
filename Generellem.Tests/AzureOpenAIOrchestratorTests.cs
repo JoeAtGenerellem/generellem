@@ -21,8 +21,9 @@ public class AzureOpenAIOrchestratorTests
     readonly Mock<IDocumentHashRepository> docHashRepMock = new();
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
+    readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILlm> llmMock = new();
-    readonly Mock<ILogger<AzureOpenAIOrchestrator>> loggerMock = new();
+    readonly Mock<ILogger<AzureOpenAIOrchestrator>> logMock = new();
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIOrchestrator orchestrator;
@@ -45,7 +46,7 @@ public class AzureOpenAIOrchestratorTests
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
         orchestrator = new AzureOpenAIOrchestrator(
-            configMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, llmMock.Object, loggerMock.Object, ragMock.Object);
+            configMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, llmMock.Object, logMock.Object, ragMock.Object);
     }
 
     [Fact]
@@ -144,13 +145,61 @@ public class AzureOpenAIOrchestratorTests
     }
 
     [Fact]
-    public async Task ProcessFilesAsync_CallsGetFiles()
+    public async Task ProcessFilesAsync_CallsGetDocumentsAsync()
     {
         SetupGetDocumentsAsync("TestDocs\\file.txt");
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
         docSourceMock.Verify(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>()), Times.Once());
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_CallsGetTextAsync()
+    {
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
+        docTypeMock
+            .Setup(docType => docType.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
+            .ReturnsAsync("Sample Text");
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        {
+            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt");
+            await Task.CompletedTask;
+        }
+        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
+
+        await orchestrator.ProcessFilesAsync(CancellationToken.None);
+
+        docTypeMock.Verify(
+            docType => docType.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessFilesAsync_GetTextAsyncThrows_LogsWarning()
+    {
+        SetupGetDocumentsAsync("TestDocs\\file.txt");
+        docTypeMock
+            .Setup(docType => docType.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
+            .ThrowsAsync(new Exception());
+        async IAsyncEnumerable<DocumentInfo> GetDocInfos()
+        {
+            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt");
+            await Task.CompletedTask;
+        }
+        docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
+
+        await orchestrator.ProcessFilesAsync(CancellationToken.None);
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Warning,
+                    GenerellemLogEvents.DocumentError,
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
     }
 
     [Fact]
@@ -204,7 +253,7 @@ public class AzureOpenAIOrchestratorTests
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
-            .Returns(new DocumentHash { FileRef = "", Hash = Guid.NewGuid().ToString() });
+            .Returns(new DocumentHash { DocumentReference = "", Hash = Guid.NewGuid().ToString() });
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 
@@ -222,7 +271,7 @@ public class AzureOpenAIOrchestratorTests
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
-            .Returns(new DocumentHash { FileRef = "", Hash = SHA256BlankStringHash });
+            .Returns(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash });
 
         await orchestrator.ProcessFilesAsync(CancellationToken.None);
 

@@ -13,7 +13,7 @@ public class FileSystemTests
         var fileSystem = new FileSystem();
 
         await foreach (DocumentInfo docInfo in fileSystem.GetDocumentsAsync(CancellationToken.None))
-            Assert.NotEmpty(docInfo.FileRef);
+            Assert.NotEmpty(docInfo.DocumentReference);
     }
 
     [Theory]

@@ -64,20 +64,20 @@ public class AzureOpenAIRagTests
             {
                 ID = "id1",
                 Content = "chunk1",
-                FileRef = "fileRef1"
+                DocumentReference = "documentReference1"
             },
             new() 
             {
                 ID = "id2",
                 Content = "chunk2",
-                FileRef = "fileRef2"
+                DocumentReference = "documentReference2"
             }
         ];
         azSearchSvcMock
             .Setup(srchSvc => srchSvc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         azSearchSvcMock
-            .Setup(srchSvc => srchSvc.GetFileRefsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(srchSvc => srchSvc.GetDocumentReferencesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
         azSearchSvcMock
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
@@ -104,7 +104,7 @@ public class AzureOpenAIRagTests
         {
             Content = "Test document text",
             Embedding = TestEmbeddings.CreateEmbeddingArray(),
-            FileRef = "file"
+            DocumentReference = "file"
         };
         docTypeMock
             .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
@@ -114,7 +114,7 @@ public class AzureOpenAIRagTests
 
         TextChunk actualChunk = textChunks.First();
         Assert.Equal(expectedChunk.Content, actualChunk.Content);
-        Assert.Equal(expectedChunk.FileRef, actualChunk.FileRef);
+        Assert.Equal(expectedChunk.DocumentReference, actualChunk.DocumentReference);
         float[] expectedEmbedding = expectedChunk.Embedding.ToArray();
         float[] actualEmbedding = actualChunk.Embedding.ToArray();
         Assert.Equal(expectedEmbedding.Length, actualEmbedding.Length);
@@ -152,7 +152,7 @@ public class AzureOpenAIRagTests
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                FileRef = "file"
+                DocumentReference = "file"
             }
         ];
 
@@ -180,7 +180,7 @@ public class AzureOpenAIRagTests
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                FileRef = "file"
+                DocumentReference = "file"
             }
         ];
 
@@ -200,7 +200,7 @@ public class AzureOpenAIRagTests
             {
                 Content = "Test document text",
                 Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                FileRef = "file"
+                DocumentReference = "file"
             }
         ];
 
@@ -227,12 +227,12 @@ public class AzureOpenAIRagTests
     public async Task RemoveDeletedFilesAsync_WithNoDeletedFiles_DoesNotDeleteAnything()
     {
         string docSource = "Localhost:FileSystem";
-        List<string> docSourceFileRefs = new List<string> { "fileRef1", "fileRef2" };
+        List<string> docSourceDocumentReferences = new List<string> { "documentReference1", "documentReference2" };
 
-        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceFileRefs, CancellationToken.None);
+        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
 
         azSearchSvcMock.Verify(
-            srch => srch.DeleteFileRefsAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
+            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -240,12 +240,12 @@ public class AzureOpenAIRagTests
     public async Task RemoveDeletedFilesAsync_WithDeletedFiles_DeletesCorrectFiles()
     {
         string docSource = "Localhost:FileSystem";
-        List<string> docSourceFileRefs = new List<string> { "file1" };
+        List<string> docSourceDocumentReferences = new List<string> { "file1" };
 
-        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceFileRefs, CancellationToken.None);
+        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
 
         azSearchSvcMock.Verify(
-            srch => srch.DeleteFileRefsAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
+            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

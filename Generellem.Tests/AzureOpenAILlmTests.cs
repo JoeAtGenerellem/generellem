@@ -36,9 +36,9 @@ public class AzureOpenAILlmTests
     }
 
     [Fact]
-    public void TestAskAsync_WithNullEndpoint_ThrowsArgumentException()
+    public async Task TestAskAsync_WithNullEndpoint_ThrowsArgumentException()
     {
-        Assert.ThrowsAsync<ArgumentException>(() =>
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
             llm.AskAsync<IChatResponse>(null, CancellationToken.None));
     }
 
@@ -57,11 +57,11 @@ public class AzureOpenAILlmTests
     }
 
     [Fact]
-    public void TestAskAsync_WithNullCompletionsOptions_ThrowsArgumentNullException()
+    public async Task TestAskAsync_WithNullCompletionsOptions_ThrowsArgumentNullException()
     {
         var request = new AzureOpenAIChatRequest(null);
 
-        Assert.ThrowsAsync<ArgumentNullException>(() =>
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
             llm.AskAsync<IChatResponse>(request, CancellationToken.None));
     }
 

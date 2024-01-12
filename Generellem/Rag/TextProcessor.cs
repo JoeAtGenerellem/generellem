@@ -11,9 +11,9 @@ public class TextProcessor
     /// Breaks a string into chunks with overlap.
     /// </summary>
     /// <param name="text">Full text string to break apart.</param>
-    /// <param name="fileRef">Reference to file. e.g. either a path, url, or some other indicator of where the file came from</param>
+    /// <param name="documentReference">Reference to file. e.g. either a path, url, or some other indicator of where the file came from</param>
     /// <returns>List of <see cref="TextChunk"/> representing input <see cref="text"/></returns>
-    public static List<TextChunk> BreakIntoChunks(string text, string fileRef)
+    public static List<TextChunk> BreakIntoChunks(string text, string documentReference)
     {
         List<TextChunk> chunks = [];
         
@@ -30,9 +30,9 @@ public class TextProcessor
             chunks.Add(
                 new TextChunk()
                 {
-                    ID = Convert.ToBase64String(Encoding.UTF8.GetBytes(fileRef)),
+                    ID = Convert.ToBase64String(Encoding.UTF8.GetBytes(documentReference)),
                     Content = content,
-                    FileRef = fileRef
+                    DocumentReference = documentReference
                 });
         }
         

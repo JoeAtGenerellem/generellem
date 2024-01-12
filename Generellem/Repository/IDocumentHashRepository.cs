@@ -16,22 +16,22 @@ public interface IDocumentHashRepository
     /// <summary>
     /// Delete the <see cref="DocumentHash"/>.
     /// </summary>
-    /// <param name="fileRefs">Unique FileRefs for the <see cref="DocumentHash"/>'s to delete.</param>
-    void Delete(List<string> fileRefs);
+    /// <param name="documentReferences">Unique DocumentReferences for the <see cref="DocumentHash"/>'s to delete.</param>
+    void Delete(List<string> documentReferences);
 
     /// <summary>
-    /// Queries a <see cref="DocumentHash"/> based on fileRef.
+    /// Queries a <see cref="DocumentHash"/> based on documentReference.
     /// </summary>
-    /// <param name="fileRef">Unique name for file.</param>
+    /// <param name="documentReference">Unique name for file.</param>
     /// <returns><see cref="DocumentHash"/> or null if not found.</returns>
-    DocumentHash? GetDocumentHash(string fileRef);
+    DocumentHash? GetDocumentHash(string documentReference);
 
     /// <summary>
-    /// Queries for <see cref="DocumentHash"/>'s based on fileRefs.
+    /// Queries for <see cref="DocumentHash"/>'s based on documentReferences.
     /// </summary>
-    /// <param name="fileRefs">Unique names for files.</param>
+    /// <param name="documentReferences">Unique names for files.</param>
     /// <returns><see cref="List{T}"/> of <see cref="DocumentHash"/>'s.</returns>
-    List<DocumentHash> GetDocumentHashes(List<string> fileRefs);
+    List<DocumentHash> GetDocumentHashes(List<string> documentReferences);
 
     /// <summary>
     /// This is the first time we've scanned a document, so add a new record.

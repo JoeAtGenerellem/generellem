@@ -16,7 +16,7 @@ public partial class InitialCreate : Migration
             {
                 Id = table.Column<int>(type: "INTEGER", nullable: false)
                     .Annotation("Sqlite:Autoincrement", true),
-                FileRef = table.Column<string>(type: "TEXT", nullable: true),
+                DocumentReference = table.Column<string>(type: "TEXT", nullable: true),
                 Hash = table.Column<string>(type: "TEXT", nullable: true)
             },
             constraints: table =>
@@ -25,9 +25,9 @@ public partial class InitialCreate : Migration
             });
 
         migrationBuilder.CreateIndex(
-            name: "IX_DocumentHashes_FileRef",
+            name: "IX_DocumentHashes_DocumentReference",
             table: "DocumentHashes",
-            column: "FileRef");
+            column: "DocumentReference");
     }
 
     /// <inheritdoc />

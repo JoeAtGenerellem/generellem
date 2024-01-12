@@ -5,7 +5,7 @@ namespace Generellem.Repository;
 /// <summary>
 /// DB Table for keeping track of file content changes.
 /// </summary>
-[Index(nameof(FileRef))]
+[Index(nameof(DocumentReference))]
 public class DocumentHash()
 {
     /// <summary>
@@ -14,9 +14,9 @@ public class DocumentHash()
     public int Id { get; set; }
 
     /// <summary>
-    /// Unique file identifier - used for queries.
+    /// Unique document identifier - used for queries.
     /// </summary>
-    public string? FileRef { get; set; }
+    public string? DocumentReference { get; set; }
 
     /// <summary>
     /// Previous file hash for comparing to current file 
