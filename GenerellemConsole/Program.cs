@@ -49,16 +49,6 @@ void ConfigureDB()
 {
     using GenerellemContext ctx = new();
 
-    //try
-    //{
-    //    ctx.Database.EnsureCreated();
-    //}
-    //catch (Exception)
-    //{
-    //    Console.WriteLine("DB already exists.");
-    //}
-
-
     try
     {
         ctx.Database.OpenConnection();

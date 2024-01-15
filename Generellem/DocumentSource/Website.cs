@@ -43,7 +43,7 @@ public class Website(
 
     static async Task<IEnumerable<WebSpec>> GetWebsitesAsync()
     {
-        using var fileStream = File.OpenRead("Websites.json");
+        using var fileStream = File.OpenRead($"{nameof(Website)}.json");
 
         IEnumerable<WebSpec>? websites = await JsonSerializer.DeserializeAsync<IEnumerable<WebSpec>>(fileStream);
 
