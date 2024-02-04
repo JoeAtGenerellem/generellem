@@ -52,14 +52,21 @@ public class Website(
 
     async IAsyncEnumerable<DocumentInfo> GetPagesAsync(string url, [EnumeratorCancellation] CancellationToken cancelToken)
     {
-        var html = new Html();
+        HashSet<string> alreadyVisited = new();
 
-        var queue = new Queue<string>();
+        Html html = new();
+
+        Queue<string> queue = new();
         queue.Enqueue(url);
 
         while (queue.Count is not 0 && !cancelToken.IsCancellationRequested)
         {
-            var currentUrl = queue.Dequeue();
+            string currentUrl = queue.Dequeue();
+
+            if (alreadyVisited.Contains(currentUrl))
+                continue;
+
+            alreadyVisited.Add(currentUrl);
 
             string? htmlDocument = null;
 

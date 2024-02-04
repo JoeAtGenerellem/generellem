@@ -8,6 +8,16 @@ namespace Generellem.Rag;
 public class TextProcessor
 {
     /// <summary>
+    /// Maximum size per text chunk. (default = 5000)
+    /// </summary>
+    public static int ChunkSize { get; set; } = 5000;
+
+    /// <summary>
+    /// Number of characters to overlap between chunks. (default = 100)
+    /// </summary>
+    public static int Overlap { get; set; } = 100;
+
+    /// <summary>
     /// Breaks a string into chunks with overlap.
     /// </summary>
     /// <param name="text">Full text string to break apart.</param>
@@ -17,13 +27,13 @@ public class TextProcessor
     {
         List<TextChunk> chunks = [];
         
-        int chunkSize = 5000;
-        int overlap = 100;
-        
+        int chunkSize = Math.Min(text.Length, Math.Max(0, ChunkSize));
+        int overlap = Math.Min(chunkSize, Math.Max(0, Overlap));
+
         for(int i = 0; i < text.Length; i += (chunkSize - overlap)) 
         {
             int start = i;
-            int end = Math.Min(i + chunkSize, text.Length);
+            int end = Math.Min(i + ChunkSize, text.Length);
             
             string content = text[start..end];
 

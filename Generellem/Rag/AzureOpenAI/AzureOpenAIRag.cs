@@ -49,12 +49,15 @@ public class AzureOpenAIRag(
     public virtual async Task<List<TextChunk>> EmbedAsync(string fullText, IDocumentType docType, string documentReference, CancellationToken cancellationToken)
     {
         List<TextChunk> chunks = TextProcessor.BreakIntoChunks(fullText, documentReference);
-        EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(fullText);
 
         foreach (TextChunk chunk in chunks)
         {
+            if (chunk.Content is null) continue;
+
             try
             {
+                EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(chunk.Content);
+
                 Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
                     async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
                     cancellationToken);
