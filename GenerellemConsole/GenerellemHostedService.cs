@@ -70,7 +70,7 @@ internal class GenerellemHostedService(
     /// <returns></returns>
     async Task RunMainLoopAsync(CancellationToken cancelToken)
     {
-        List<string> stopWords = ["abort", "adios", "bye", "chao", "end", "quit", "stop"];
+        List<string> stopWords = ["abort", "adios", "bye", "chao", "end", "exit", "quit", "stop"];
 
         string? userInput;
 
@@ -81,7 +81,7 @@ internal class GenerellemHostedService(
             Console.Write("generellem>");
             userInput = Console.ReadLine() ?? string.Empty;
 
-            if (string.IsNullOrWhiteSpace(userInput))
+            if (string.IsNullOrWhiteSpace(userInput) || stopWords.Contains(userInput))
                 continue;
 
             string response = await orchestrator.AskAsync(userInput, chatHistory, cancelToken);
