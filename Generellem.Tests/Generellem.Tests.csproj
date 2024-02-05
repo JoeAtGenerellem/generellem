@@ -63,7 +63,7 @@
     <None Update="TestDocs\WordDoc2.doc">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Websites.json">
+    <None Update="Website.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
