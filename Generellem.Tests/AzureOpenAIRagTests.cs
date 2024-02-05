@@ -90,18 +90,23 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task EmbedAsync_CallsGetEmbeddingsAsync()
     {
+        TextProcessor.ChunkSize = 5000;
+        TextProcessor.Overlap = 100;
+
         await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
 
         openAIClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
-            Times.Once());
+            Times.AtLeastOnce());
     }
 
     [Fact]
-    public async Task EmbedAsync_BreaksTextIntoChunks()
+    public async Task EmbedAsync_WithNoOverlap_BreaksTextInto2Chunks()
     {
         int oldChunSize = TextProcessor.ChunkSize;
+        int oldOverlap = TextProcessor.Overlap;
         TextProcessor.ChunkSize = 9;
+        TextProcessor.Overlap = 0;
 
         await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
 
@@ -109,6 +114,24 @@ public class AzureOpenAIRagTests
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
         TextProcessor.ChunkSize = oldChunSize;
+        TextProcessor.Overlap = oldOverlap;
+    }
+
+    [Fact]
+    public async Task EmbedAsync_WithOverlap_BreaksTextInto3Chunks()
+    {
+        int oldChunSize = TextProcessor.ChunkSize;
+        int oldOverlap = TextProcessor.Overlap;
+        TextProcessor.ChunkSize = 9;
+        TextProcessor.Overlap = 2;
+
+        await azureOpenAIRag.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+
+        openAIClientMock.Verify(
+            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+        TextProcessor.ChunkSize = oldChunSize;
+        TextProcessor.Overlap = oldOverlap;
     }
 
     [Fact]

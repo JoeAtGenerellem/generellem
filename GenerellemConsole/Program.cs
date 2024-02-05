@@ -1,7 +1,7 @@
 ﻿using Generellem.DocumentSource;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
-using Generellem.Orchestrator;
+using Generellem.Processors;
 using Generellem.Rag;
 using Generellem.Rag.AzureOpenAI;
 using Generellem.Repository;
@@ -65,12 +65,13 @@ void ConfigureServices(IServiceCollection services)
     services.AddHostedService<GenerellemHostedService>();
 
     services.AddTransient<GenerellemContext>();
-    services.AddTransient<GenerellemOrchestratorBase, AzureOpenAIOrchestrator>();
     services.AddTransient<LlmClientFactory, LlmClientFactory>();
 
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, DemoDocumentSourceFactory>();
+    services.AddTransient<IGenerellemIngestion, Ingestion>();
+    services.AddTransient<IGenerellemQuery, AzureOpenAIQuery>();
     services.AddTransient<IHttpClientFactory, HttpClientFactory>();
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IRag, AzureOpenAIRag>();

@@ -28,7 +28,7 @@ public class TextProcessor
         List<TextChunk> chunks = [];
         
         int chunkSize = Math.Min(text.Length, Math.Max(0, ChunkSize));
-        int overlap = Math.Min(chunkSize, Math.Max(0, Overlap));
+        int overlap = chunkSize < Overlap ? 0 : Overlap;
 
         for(int i = 0; i < text.Length; i += (chunkSize - overlap)) 
         {

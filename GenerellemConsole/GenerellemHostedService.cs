@@ -1,6 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 
-using Generellem.Orchestrator;
+using Generellem.Processors;
 using Generellem.Services;
 
 using Microsoft.Extensions.Hosting;
@@ -12,14 +12,12 @@ namespace GenerellemConsole;
 /// Starts and runs the main application as a .NET Hosted Service.
 /// </summary>
 internal class GenerellemHostedService(
-    GenerellemOrchestratorBase orchestrator, 
+    IGenerellemIngestion generellemIngestion,
+    IGenerellemQuery generellemQuery, 
     IHostApplicationLifetime lifetime,
     ILogger<GenerellemHostedService> logger)
     : IHostedService
 {
-    readonly GenerellemOrchestratorBase orchestrator = orchestrator;
-    readonly IHostApplicationLifetime lifetime = lifetime;
-
     /// <summary>
     /// Kicks off file retrieval/upload and starts Console UI.
     /// </summary>
@@ -30,7 +28,7 @@ internal class GenerellemHostedService(
         {
             // Normally, this would run in a separate service that
             // runs on a periodic timer to grab the latest files.
-            await orchestrator.ProcessFilesAsync(cancelToken);
+            await generellemIngestion.IngestDocumentsAsync(cancelToken);
 
             PrintBanner();
 
@@ -84,7 +82,7 @@ internal class GenerellemHostedService(
             if (string.IsNullOrWhiteSpace(userInput) || stopWords.Contains(userInput))
                 continue;
 
-            string response = await orchestrator.AskAsync(userInput, chatHistory, cancelToken);
+            string response = await generellemQuery.AskAsync(userInput, chatHistory, cancelToken);
 
             Console.WriteLine($"\n{response}\n");
 
