@@ -8,6 +8,6 @@ public class GenerellemContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite("Data Source=generellem.db");
+        optionsBuilder.UseSqlite("Data Source=generellem.db;Default Timeout=5");
     }
 }
