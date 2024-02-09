@@ -92,9 +92,27 @@ public class Ingestion(
         DocumentHash? document = docHashRep.GetDocumentHash(doc.DocumentReference);
 
         if (document == null)
-            docHashRep.Insert(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
+            try
+            {
+                docHashRep.Insert(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    "Unable to insert doc hash - {DocumentReference}, {DocumentHash}, {Exception}",
+                    doc.DocumentReference, newHash, ex);
+            }
         else if (document.Hash != newHash)
-            docHashRep.Update(document, newHash);
+            try
+            {
+                docHashRep.Update(document, newHash);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    "Unable to update doc hash - {DocumentReference}, {DocumentHash}, {Exception}",
+                    doc.DocumentReference, newHash, ex);
+            }
         else
             return true;
 
