@@ -2,7 +2,6 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using Polly;
@@ -10,7 +9,7 @@ using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureBlobService(IConfiguration config, ILogger<AzureBlobService> logger) : IAzureBlobService
+public class AzureBlobService(IGenerellemConfiguration config, ILogger<AzureBlobService> logger) : IAzureBlobService
 {
     readonly ILogger<AzureBlobService> logger = logger;
 

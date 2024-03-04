@@ -6,7 +6,6 @@ using Azure.Search.Documents.Models;
 
 using Generellem.Rag;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using Polly;
@@ -14,7 +13,7 @@ using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureSearchService(IConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
+public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
 {
     const int VectorSearchDimensions = 1536;
     const string VectorAlgorithmConfigName = "hnsw-config";

@@ -7,8 +7,6 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
 using Generellem.Services;
 
-using Microsoft.Extensions.Configuration;
-
 namespace Generellem.Processors;
 
 /// <summary>
@@ -17,7 +15,7 @@ namespace Generellem.Processors;
 /// <remarks>
 /// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIQuery(IConfiguration config, ILlm llm, IRag rag) : IGenerellemQuery
+public class AzureOpenAIQuery(IGenerellemConfiguration config, ILlm llm, IRag rag) : IGenerellemQuery
 {
     /// <summary>
     /// We use this to summarize the user query, based on recent context.

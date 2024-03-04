@@ -7,7 +7,6 @@ using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using Polly;
@@ -19,15 +18,15 @@ namespace Generellem.Rag.AzureOpenAI;
 /// Performs Retrieval-Augmented Generation (RAG) for Azure OpenAI.
 /// </summary>
 public class AzureOpenAIRag(
-    IAzureSearchService azSearchSvc, 
-    IConfiguration config, 
+    IAzureSearchService azSearchSvc,
+    IGenerellemConfiguration config, 
     IDocumentHashRepository docHashRep,
     LlmClientFactory llmClientFact, 
     ILogger<AzureOpenAIRag> logger) 
     : IRag
 {
     readonly IAzureSearchService azSearchSvc = azSearchSvc;
-    readonly IConfiguration config = config;
+    readonly IGenerellemConfiguration config = config;
     readonly ILogger<AzureOpenAIRag> logger = logger;
 
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
