@@ -2,13 +2,13 @@
 
 namespace Generellem.Services;
 
-public class GenerellemConfiguration : IGenerellemConfiguration
+public class DynamicConfiguration : IDynamicConfiguration
 {
     readonly IConfiguration config;
 
-    readonly Dictionary<string, string> dynamicConfig = new();
+    readonly Dictionary<string, string?> dynamicConfig = new();
 
-    public GenerellemConfiguration(IConfiguration config)
+    public DynamicConfiguration(IConfiguration config)
     {
         this.config = config;
     }
@@ -16,5 +16,6 @@ public class GenerellemConfiguration : IGenerellemConfiguration
     public string? this[string index]
     {
         get => dynamicConfig.ContainsKey(index) ? dynamicConfig[index] : config[index];
+        set => dynamicConfig[index] = value;
     }
 }

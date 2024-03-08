@@ -70,7 +70,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, DemoDocumentSourceFactory>();
-    services.AddTransient<IGenerellemConfiguration, GenerellemConfiguration>();
+    services.AddTransient<IDynamicConfiguration, DynamicConfiguration>();
     services.AddTransient<IGenerellemIngestion, Ingestion>();
     services.AddTransient<IGenerellemQuery, AzureOpenAIQuery>();
     services.AddTransient<IHttpClientFactory, HttpClientFactory>();

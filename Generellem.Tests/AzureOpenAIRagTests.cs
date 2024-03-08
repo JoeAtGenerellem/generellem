@@ -9,7 +9,6 @@ using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Generellem.Rag.Tests;
@@ -17,7 +16,7 @@ namespace Generellem.Rag.Tests;
 public class AzureOpenAIRagTests
 {
     readonly Mock<IAzureSearchService> azSearchSvcMock = new();
-    readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IDocumentHashRepository> docHashRepMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();

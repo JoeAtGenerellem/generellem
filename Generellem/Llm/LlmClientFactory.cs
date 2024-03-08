@@ -7,7 +7,7 @@ namespace Generellem.Llm;
 
 public class LlmClientFactory
 {
-    readonly IGenerellemConfiguration config;
+    readonly IDynamicConfiguration config;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     /// <summary>
@@ -16,7 +16,7 @@ public class LlmClientFactory
     protected LlmClientFactory() { }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
-    public LlmClientFactory(IGenerellemConfiguration config)
+    public LlmClientFactory(IDynamicConfiguration config)
     {
         this.config = config;
     }

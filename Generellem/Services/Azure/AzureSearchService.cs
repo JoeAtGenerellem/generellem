@@ -1,10 +1,13 @@
-﻿using Azure;
+﻿using System.Net;
+
+using Azure;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 
 using Generellem.Rag;
+using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +16,7 @@ using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
+public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
 {
     const int VectorSearchDimensions = 1536;
     const string VectorAlgorithmConfigName = "hnsw-config";
@@ -21,9 +24,9 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     readonly ILogger<AzureSearchService> logger = logger;
 
-    readonly string? searchServiceAdminApiKey = config[GKeys.AzSearchServiceAdminApiKey];
-    readonly string? searchServiceEndpoint = config[GKeys.AzSearchServiceEndpoint];
-    readonly string? searchServiceIndex = config[GKeys.AzSearchServiceIndex];
+    string? SearchServiceAdminApiKey => config[GKeys.AzSearchServiceAdminApiKey];
+    string? SearchServiceEndpoint => config[GKeys.AzSearchServiceEndpoint];
+    string? SearchServiceIndex => config[GKeys.AzSearchServiceIndex];
 
     readonly ResiliencePipeline pipeline = 
         new ResiliencePipelineBuilder()
@@ -33,13 +36,13 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public virtual async Task CreateIndexAsync(CancellationToken cancelToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
-        SearchIndex searchIndex = new(searchServiceIndex)
+        SearchIndex searchIndex = new(SearchServiceIndex)
         {
             Fields =
             {
@@ -77,13 +80,13 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public async Task DeleteDocumentReferencesAsync(List<string> idsToDelete, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
-        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
 
         var batch = IndexDocumentsBatch.Delete(nameof(TextChunk.ID), idsToDelete);
         await searchClient.IndexDocumentsAsync(batch, null, cancellationToken);
@@ -91,11 +94,11 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public async Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
         SearchIndexClient indexClient = new SearchIndexClient(endpoint, credential);
 
@@ -103,7 +106,7 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
         {
             SearchIndex index =
                 await pipeline.ExecuteAsync(
-                    async token => await indexClient.GetIndexAsync(searchServiceIndex, cancellationToken),
+                    async token => await indexClient.GetIndexAsync(SearchServiceIndex, cancellationToken),
                     cancellationToken);
             return index != null;
         }
@@ -116,13 +119,13 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
-        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
 
         SearchOptions options = new()
         {
@@ -154,13 +157,13 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public virtual async Task UploadDocumentsAsync(List<TextChunk> documents, CancellationToken cancelToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
-        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
 
         try
         {
@@ -177,13 +180,13 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
 
     public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding, CancellationToken cancelToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceAdminApiKey, nameof(searchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchServiceEndpoint, nameof(searchServiceEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
-        Uri endpoint = new(searchServiceEndpoint);
-        AzureKeyCredential credential = new(searchServiceAdminApiKey);
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
-        SearchClient searchClient = new(endpoint, searchServiceIndex, credential);
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
 
         var searchOptions = new SearchOptions
         {
@@ -205,6 +208,12 @@ public class AzureSearchService(IGenerellemConfiguration config, ILogger<AzureSe
                 .ToList();
 
             return chunks;
+        }
+        catch (RequestFailedException rfNf) when (rfNf.Status == (int)HttpStatusCode.NotFound)
+        {
+            throw new GenerellemNeedsIngestionException(
+                "You need to perform ingestion before querying so that there are documents available for context.",  
+                rfNf);
         }
         catch (RequestFailedException rfEx)
         {

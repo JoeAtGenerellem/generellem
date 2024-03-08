@@ -15,7 +15,7 @@ namespace Generellem.Processors;
 /// <remarks>
 /// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIQuery(IGenerellemConfiguration config, ILlm llm, IRag rag) : IGenerellemQuery
+public class AzureOpenAIQuery(IDynamicConfiguration config, ILlm llm, IRag rag) : IGenerellemQuery
 {
     /// <summary>
     /// We use this to summarize the user query, based on recent context.
@@ -32,6 +32,8 @@ public class AzureOpenAIQuery(IGenerellemConfiguration config, ILlm llm, IRag ra
         "You are a professional AI bot that returns accurate content for busy workers.\n" +
         "Please answer the user's question using only information you can find in the context.\n" +
         "If the user's question is unrelated to the information in the context, say you don't know.\n";
+
+    public IDynamicConfiguration Configuration => config;
 
     /// <summary>
     /// Searches for context, builds a prompt, and gets a response from Azure OpenAI
