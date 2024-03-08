@@ -1,11 +1,13 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
+using Azure.Core.Pipeline;
 
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
+using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
@@ -19,22 +21,25 @@ namespace Generellem.Rag.AzureOpenAI;
 /// </summary>
 public class AzureOpenAIRag(
     IAzureSearchService azSearchSvc,
-    IGenerellemConfiguration config, 
+    IDynamicConfiguration config, 
     IDocumentHashRepository docHashRep,
     LlmClientFactory llmClientFact, 
     ILogger<AzureOpenAIRag> logger) 
     : IRag
 {
     readonly IAzureSearchService azSearchSvc = azSearchSvc;
-    readonly IGenerellemConfiguration config = config;
+    readonly IDynamicConfiguration config = config;
     readonly ILogger<AzureOpenAIRag> logger = logger;
 
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
     readonly ResiliencePipeline pipeline = 
         new ResiliencePipelineBuilder()
-            .AddRetry(new RetryStrategyOptions())
-            .AddTimeout(TimeSpan.FromSeconds(3))
+            .AddRetry(new()
+             {
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => ex is not GenerellemNeedsIngestionException)
+             })
+            .AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
 
     /// <summary>

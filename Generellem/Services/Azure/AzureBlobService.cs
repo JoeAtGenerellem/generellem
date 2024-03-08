@@ -9,7 +9,7 @@ using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureBlobService(IGenerellemConfiguration config, ILogger<AzureBlobService> logger) : IAzureBlobService
+public class AzureBlobService(IDynamicConfiguration config, ILogger<AzureBlobService> logger) : IAzureBlobService
 {
     readonly ILogger<AzureBlobService> logger = logger;
 

@@ -15,7 +15,7 @@ public class AzureOpenAIQueryTests
 {
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
-    readonly Mock<IConfiguration> configMock = new();
+    readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<ILogger<AzureOpenAIQuery>> logMock = new();
     readonly Mock<IRag> ragMock = new();

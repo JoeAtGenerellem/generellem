@@ -1,5 +1,7 @@
 ﻿using Azure.AI.OpenAI;
 
+using Generellem.Services;
+
 namespace Generellem.Processors;
 
 /// <summary>
@@ -12,6 +14,7 @@ public interface IGenerellemQuery
     /// Instructions to the LLM on how interpret query and respond.
     /// </summary>
     string SystemMessage { get; set; }
+    IDynamicConfiguration Configuration { get; }
 
     /// <summary>
     /// Performs whatever process you need to prepare a user's text and handle the response
