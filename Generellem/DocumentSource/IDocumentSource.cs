@@ -1,4 +1,5 @@
-﻿namespace Generellem.DocumentSource;
+﻿
+namespace Generellem.DocumentSource;
 
 /// <summary>
 /// Location to get documents for ingestion
@@ -6,14 +7,19 @@
 public interface IDocumentSource
 {
     /// <summary>
+    /// Describes the document source.
+    /// </summary>
+    string Description { get; set; }
+
+    /// <summary>
     /// Every source has a unique prefix to disambiguate file paths/names.
     /// </summary>
     string Prefix { get; init; }
 
     /// <summary>
-    /// Scans the document source for documents and returns an <see cref="IAsyncEnumerable{T}"/> of <see cref="DocumentInfo"/>.
+    /// Scans the document source for documents.
     /// </summary>
-    /// <param name="cancelToken"></param>
-    /// <returns></returns>
+    /// <param name="cancelToken">Cancels the task.</param>
+    /// <returns><see cref="IAsyncEnumerable{T}"/> of <see cref="DocumentInfo"/>.</returns>
     IAsyncEnumerable<DocumentInfo> GetDocumentsAsync(CancellationToken cancelToken);
 }

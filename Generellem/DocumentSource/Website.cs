@@ -9,15 +9,22 @@ using HtmlAgilityPack;
 
 using Microsoft.Extensions.Logging;
 
+using IHttpClientFactory = Generellem.Services.IHttpClientFactory;
+
 namespace Generellem.DocumentSource;
 
 /// <summary>
 /// Manages ingestion of a website
 /// </summary>
 public class Website(
-    IHttpClientFactory httpFact, ILogger<Website> logger) 
-    : IDocumentSource
+    IHttpClientFactory httpFact, ILogger<Website> logger)
+    : IDocumentSource, IWebsite
 {
+    /// <summary>
+    /// Describes the document source.
+    /// </summary>
+    public string Description { get; set; } = "Web Site";
+
     public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(Website)}";
 
     readonly HttpClient httpClient = httpFact.Create();
@@ -32,25 +39,49 @@ public class Website(
     {
         IEnumerable<WebSpec> websites = await GetWebsitesAsync();
 
-        foreach (WebSpec website in websites)
+        foreach (WebSpec spec in websites)
         {
-            if (website?.Url is null) continue;
+            if (spec?.Url is null) continue;
 
-            await foreach (DocumentInfo page in GetPagesAsync(website.Url, cancelToken))
+            string specDescription = spec.Description ?? string.Empty;
+
+            await foreach (DocumentInfo page in GetPagesAsync(spec.Url, specDescription, cancelToken))
                 yield return page;
         }
     }
 
-    static async Task<IEnumerable<WebSpec>> GetWebsitesAsync()
+    public virtual async Task<IEnumerable<WebSpec>> GetWebsitesAsync(string configPath = nameof(Website) + ".json")
     {
-        using var fileStream = File.OpenRead($"{nameof(Website)}.json");
+        if (!File.Exists(configPath))
+            using (FileStream specWriter = File.OpenWrite(configPath))
+                await specWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.Default.GetBytes("[]")));
 
-        IEnumerable<WebSpec>? websites = await JsonSerializer.DeserializeAsync<IEnumerable<WebSpec>>(fileStream);
+        using var specReader = File.OpenRead(configPath);
 
-        return websites ?? new List<WebSpec>();
+        IEnumerable<WebSpec>? webSpecs = await JsonSerializer.DeserializeAsync<IEnumerable<WebSpec>>(specReader);
+
+        return webSpecs ?? new List<WebSpec>();
     }
 
-    async IAsyncEnumerable<DocumentInfo> GetPagesAsync(string url, [EnumeratorCancellation] CancellationToken cancelToken)
+    /// <summary>
+    /// Writes web URLs to the config file.
+    /// </summary>
+    /// <param name="webSpecs">Enumerable of <see cref="WebSpec"/>.</param>
+    /// <param name="configPath">Location of the config file.</param>
+    public virtual async ValueTask WriteSitesAsync(IEnumerable<WebSpec> webSpecs, string configPath = nameof(Website) + ".json")
+    {
+        File.Delete(configPath);
+
+        using FileStream specWriter = File.OpenWrite(configPath);
+
+        string specJson = JsonSerializer.Serialize(webSpecs, new JsonSerializerOptions() { WriteIndented = true });
+        byte[] specBytes = Encoding.Default.GetBytes(specJson);
+        ReadOnlyMemory<byte> specMem = new(specBytes);
+
+        await specWriter.WriteAsync(specMem);
+    }
+
+    async IAsyncEnumerable<DocumentInfo> GetPagesAsync(string url, string specDescription, [EnumeratorCancellation] CancellationToken cancelToken)
     {
         HashSet<string> alreadyVisited = new();
 
@@ -87,7 +118,7 @@ public class Website(
                 Position = 0
             };
 
-            yield return new DocumentInfo(Prefix, memStream, html, currentUrl);
+            yield return new DocumentInfo(Prefix, memStream, html, currentUrl, specDescription);
 
             var links = GetLinks(htmlDocument, url);
 
@@ -109,7 +140,7 @@ public class Website(
         var doc = new HtmlDocument();
         doc.LoadHtml(htmlDocument);
 
-        List<string> links = 
+        List<string> links =
             (from node in doc.DocumentNode.SelectNodes("//a[@href]")
              let href = node.GetAttributeValue("href", null)
              where href != null && href.StartsWith(baseUrl)

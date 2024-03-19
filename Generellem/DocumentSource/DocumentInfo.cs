@@ -8,8 +8,9 @@ namespace Generellem.DocumentSource;
 /// <param name="docSourcePrefix">Unique document source, such as <see cref="FileSystem"/> or <see cref="Website"/>.</param>
 /// <param name="docStream"><see cref="Stream"/> with document data.</param>
 /// <param name="docType">Type of document in <see cref="docStream"/>.</param>
-/// <param name="filePath">The full path/URL of the file within it's document source.</param>
-public class DocumentInfo(string? docSourcePrefix, Stream? docStream, IDocumentType? docType, string? filePath)
+/// <param name="docPath">The full path/URL of the file within it's document source.</param>
+/// <param name="pathDescription">Description of the documents at the path in the document source.</param>
+public class DocumentInfo(string? docSourcePrefix, Stream? docStream, IDocumentType? docType, string? docPath, string? pathDescription)
 {
     /// <summary>
     /// <see cref="Stream"/> with document data.
@@ -22,12 +23,17 @@ public class DocumentInfo(string? docSourcePrefix, Stream? docStream, IDocumentT
     public IDocumentType? DocType { get; set; } = docType;
 
     /// <summary>
-    /// Full path of the file within the document source.
+    /// Full path of the document within the document source.
     /// </summary>
-    public string? FilePath { get; set; } = filePath;
+    public string? DocPath { get; set; } = docPath;
+
+    /// <summary>
+    /// Description of the documents at the path in the document source.
+    /// </summary>
+    public string? PathDescription { get; set; } = pathDescription;
 
     /// <summary>
     /// Uniquely defines a document accross different sources.
     /// </summary>
-    public string DocumentReference { get; set; } = $"{docSourcePrefix}@{filePath}";
+    public string DocumentReference { get; set; } = $"{docSourcePrefix}@{docPath}";
 }

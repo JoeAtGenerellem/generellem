@@ -2,6 +2,8 @@
 
 using Microsoft.Extensions.Logging;
 
+using IHttpClientFactory = Generellem.Services.IHttpClientFactory;
+
 namespace Generellem.DocumentSource;
 
 public class DemoDocumentSourceFactory(

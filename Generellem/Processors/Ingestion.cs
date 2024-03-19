@@ -23,15 +23,20 @@ public class Ingestion(
     /// <summary>
     /// Recursive search of documents from specified document sources
     /// </summary>
+    /// <param name="progress">Lets the caller receive progress updates.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    public virtual async Task IngestDocumentsAsync(CancellationToken cancelToken)
+    public virtual async Task IngestDocumentsAsync(IProgress<IngestionProgress> progress,CancellationToken cancelToken)
     {
-        logger.LogInformation(GenerellemLogEvents.Information, $"Processing document sources...");
+        int count = 0;
 
         IEnumerable<IDocumentSource> docSources = docSourceFact.GetDocumentSources();
 
+        progress.Report(new($"Processing document sources..."));
+
         foreach (IDocumentSource docSource in docSources)
         {
+            progress.Report(new($"Starting on the {docSource.Description} Document Source"));
+
             List<string> documentReferences = [];
 
             await foreach (DocumentInfo doc in docSource.GetDocumentsAsync(cancelToken))
@@ -39,8 +44,10 @@ public class Ingestion(
                 ArgumentNullException.ThrowIfNull(doc);
                 ArgumentNullException.ThrowIfNull(doc.DocStream);
                 ArgumentNullException.ThrowIfNull(doc.DocType);
-                ArgumentException.ThrowIfNullOrEmpty(doc.FilePath);
+                ArgumentException.ThrowIfNullOrEmpty(doc.DocPath);
                 ArgumentException.ThrowIfNullOrEmpty(doc.DocumentReference);
+
+                ++count;
 
                 if (doc.DocType.GetType() == typeof(Unknown))
                     continue;
@@ -50,18 +57,18 @@ public class Ingestion(
                 string fullText;
                 try
                 {
-                    fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.FilePath);
+                    fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.DocPath);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(GenerellemLogEvents.DocumentError, ex, "Unable to process file: {FilePath}", doc.FilePath);
+                    logger.LogWarning(GenerellemLogEvents.DocumentError, ex, "Unable to process file: {FilePath}", doc.DocPath);
                     continue;
                 }
 
                 if (IsDocUnchanged(doc, fullText))
                     continue;
 
-                logger.LogInformation(GenerellemLogEvents.Information, "Ingesting {DocumentReference}", doc.DocumentReference);
+                progress.Report(new($"Ingesting {doc.DocumentReference}", count));
 
                 List<TextChunk> chunks = await rag.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
                 await rag.IndexAsync(chunks, cancelToken);
@@ -71,7 +78,11 @@ public class Ingestion(
             }
 
             await rag.RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
+
+            progress.Report(new($"Completed the {docSource.Description} Document Source"));
         }
+
+        progress.Report(new($"Ingestion is complete. Total documents processed for this job: {count}"));
     }
 
     /// <summary>

@@ -7,8 +7,9 @@ namespace Generellem.Processors;
 public interface IGenerellemIngestion
 {
     /// <summary>
-    /// Scans document sources and ingests supported documents.
+    /// Recursive search of documents from specified document sources
     /// </summary>
+    /// <param name="progress">Lets the caller receive progress updates.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    Task IngestDocumentsAsync(CancellationToken cancelToken);
+    Task IngestDocumentsAsync(IProgress<IngestionProgress> progress, CancellationToken cancelToken);
 }

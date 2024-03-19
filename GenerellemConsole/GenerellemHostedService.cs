@@ -26,9 +26,20 @@ internal class GenerellemHostedService(
     {
         try
         {
+            Progress<IngestionProgress> progress = new(
+                ingestionProgress =>
+                {
+                    string message = 
+                        ingestionProgress.CurrentCount > 0 ? 
+                            $"[{ingestionProgress.CurrentCount}] {ingestionProgress.Message}" :
+                            ingestionProgress.Message;
+
+                    logger.LogInformation(message);
+                });
+
             // Normally, this would run in a separate service that
             // runs on a periodic timer to grab the latest files.
-            await generellemIngestion.IngestDocumentsAsync(cancelToken);
+            await generellemIngestion.IngestDocumentsAsync(progress, cancelToken);
 
             PrintBanner();
 
