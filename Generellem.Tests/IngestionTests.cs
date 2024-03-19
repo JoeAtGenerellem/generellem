@@ -12,6 +12,8 @@ namespace Generellem.Processors.Tests;
 
 public class IngestionTests
 {
+    const string SpecDescription = "Test Spec Description";
+
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
     readonly Mock<IDocumentHashRepository> docHashRepMock = new();
@@ -44,7 +46,7 @@ public class IngestionTests
     {
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, new MemoryStream(), new Text(), filePath);
+            yield return new DocumentInfo(DocSource, new MemoryStream(), new Text(), filePath, SpecDescription);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
@@ -55,7 +57,7 @@ public class IngestionTests
     {
         SetupGetDocumentsAsync("TestDocs\\file.txt");
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docSourceMock.Verify(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
@@ -69,12 +71,12 @@ public class IngestionTests
             .ReturnsAsync("Sample Text");
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt");
+            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt", SpecDescription);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docTypeMock.Verify(
             docType => docType.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()),
@@ -90,12 +92,12 @@ public class IngestionTests
             .ThrowsAsync(new Exception());
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt");
+            yield return new DocumentInfo(DocSource, Mock.Of<MemoryStream>(), docTypeMock.Object, "file.txt", SpecDescription);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         logMock
             .Verify(
@@ -113,7 +115,7 @@ public class IngestionTests
     {
         SetupGetDocumentsAsync("TestDocs\\file.txt");
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         ragMock.Verify(
             rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
@@ -126,12 +128,12 @@ public class IngestionTests
         SetupGetDocumentsAsync("TestDocs\\file.xyz");
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, new MemoryStream(), new Unknown(), "file.xyz");
+            yield return new DocumentInfo(DocSource, new MemoryStream(), new Unknown(), "file.xyz", SpecDescription);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         ragMock.Verify(
             rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
@@ -146,7 +148,7 @@ public class IngestionTests
             .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
             .Returns((DocumentHash?)null);
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
             docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
@@ -161,7 +163,7 @@ public class IngestionTests
             .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
             .Returns(new DocumentHash { DocumentReference = "", Hash = Guid.NewGuid().ToString() });
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
             docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),
@@ -179,7 +181,7 @@ public class IngestionTests
             .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
             .Returns(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash });
 
-        await ingestion.IngestDocumentsAsync(CancellationToken.None);
+        await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
             docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),

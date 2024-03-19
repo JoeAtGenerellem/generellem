@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 using Generellem.Document;
@@ -9,8 +10,13 @@ namespace Generellem.DocumentSource;
 /// <summary>
 /// Supports ingesting documents from a computer file system
 /// </summary>
-public class FileSystem : IDocumentSource
+public class FileSystem : IDocumentSource, IFileSystem
 {
+    /// <summary>
+    /// Describes the document source.
+    /// </summary>
+    public string Description { get; set; } = "File System";
+
     public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
@@ -25,10 +31,12 @@ public class FileSystem : IDocumentSource
     {
         IEnumerable<FileSpec> fileSpecs = await GetPathsAsync();
 
-        foreach (var spec in fileSpecs)
+        foreach (FileSpec spec in fileSpecs)
         {
             if (spec?.Path is not string path)
                 continue;
+
+            string specDescription = spec.Description ?? string.Empty;
 
             Queue<string> directories = new();
             directories.Enqueue(path);
@@ -50,7 +58,7 @@ public class FileSystem : IDocumentSource
                     IDocumentType docType = DocumentTypeFactory.Create(fileName);
                     Stream fileStream = File.OpenRead(filePath);
 
-                    yield return new DocumentInfo(Prefix, fileStream, docType, filePath);
+                    yield return new DocumentInfo(Prefix, fileStream, docType, filePath, specDescription);
 
                     if (cancelToken.IsCancellationRequested)
                         break;
@@ -72,11 +80,33 @@ public class FileSystem : IDocumentSource
     /// <returns>Enumerable of <see cref="FileSpec"/>.</returns>
     public virtual async Task<IEnumerable<FileSpec>> GetPathsAsync(string configPath = nameof(FileSystem) + ".json")
     {
-        using FileStream fileStr = File.OpenRead(configPath);
+        if (!File.Exists(configPath))
+            using (FileStream specWriter = File.OpenWrite(configPath))
+                await specWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.Default.GetBytes("[]")));
 
-        IEnumerable<FileSpec>? fileSpec = await JsonSerializer.DeserializeAsync<IEnumerable<FileSpec>>(fileStr);
+        using FileStream specReader = File.OpenRead(configPath);
+
+        IEnumerable<FileSpec>? fileSpec = await JsonSerializer.DeserializeAsync<IEnumerable<FileSpec>>(specReader);
 
         return fileSpec ?? Enumerable.Empty<FileSpec>();
+    }
+
+    /// <summary>
+    /// Writes file paths to the config file.
+    /// </summary>
+    /// <param name="fileSpecs">Enumerable of <see cref="FileSpec"/>.</param>
+    /// <param name="configPath">Location of the config file.</param>
+    public virtual async ValueTask WritePathsAsync(IEnumerable<FileSpec> fileSpecs, string configPath = nameof(FileSystem) + ".json")
+    {
+        File.Delete(configPath);
+
+        using FileStream specWriter = File.OpenWrite(configPath);
+
+        string specJson = JsonSerializer.Serialize(fileSpecs, new JsonSerializerOptions() { WriteIndented = true });
+        byte[] specBytes = Encoding.Default.GetBytes(specJson);
+        ReadOnlyMemory<byte> specMem = new(specBytes);
+
+        await specWriter.WriteAsync(specMem);
     }
 
     /// <summary>
