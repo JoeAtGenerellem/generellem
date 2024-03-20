@@ -47,8 +47,6 @@ public class Ingestion(
                 ArgumentException.ThrowIfNullOrEmpty(doc.DocPath);
                 ArgumentException.ThrowIfNullOrEmpty(doc.DocumentReference);
 
-                ++count;
-
                 if (doc.DocType.GetType() == typeof(Unknown))
                     continue;
 
@@ -68,7 +66,7 @@ public class Ingestion(
                 if (IsDocUnchanged(doc, fullText))
                     continue;
 
-                progress.Report(new($"Ingesting {doc.DocumentReference}", count));
+                progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
                 List<TextChunk> chunks = await rag.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
                 await rag.IndexAsync(chunks, cancelToken);
