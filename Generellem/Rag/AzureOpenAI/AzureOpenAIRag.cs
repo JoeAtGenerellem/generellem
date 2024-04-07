@@ -3,6 +3,7 @@ using Azure.AI.OpenAI;
 using Azure.Core.Pipeline;
 
 using Generellem.Document.DocumentTypes;
+using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Repository;
 using Generellem.Services;
@@ -21,16 +22,12 @@ namespace Generellem.Rag.AzureOpenAI;
 /// </summary>
 public class AzureOpenAIRag(
     IAzureSearchService azSearchSvc,
-    IDynamicConfiguration config, 
     IDocumentHashRepository docHashRep,
+    IEmbedding embedding,
     LlmClientFactory llmClientFact, 
     ILogger<AzureOpenAIRag> logger) 
     : IRag
 {
-    readonly IAzureSearchService azSearchSvc = azSearchSvc;
-    readonly IDynamicConfiguration config = config;
-    readonly ILogger<AzureOpenAIRag> logger = logger;
-
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
     readonly ResiliencePipeline pipeline = 
@@ -42,41 +39,6 @@ public class AzureOpenAIRag(
             .AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
 
-    /// <summary>
-    /// Breaks text into chunks and adds an embedding to each chunk based on the text in that chunk.
-    /// </summary>
-    /// <param name="fullText">Full document text.</param>
-    /// <param name="docType"><see cref="IDocumentType"/> for extracting text from document.</param>
-    /// <param name="documentReference">Reference to file. e.g. either a path, url, or some other indicator of where the file came from.</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    /// <returns>List of <see cref="TextChunk"/></returns>
-    public virtual async Task<List<TextChunk>> EmbedAsync(string fullText, IDocumentType docType, string documentReference, CancellationToken cancellationToken)
-    {
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(fullText, documentReference);
-
-        foreach (TextChunk chunk in chunks)
-        {
-            if (chunk.Content is null) continue;
-
-            try
-            {
-                EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(chunk.Content);
-
-                Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
-                    async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
-                    cancellationToken);
-
-                chunk.Embedding = embeddings.Value.Data[0].Embedding;
-            }
-            catch (RequestFailedException rfEx)
-            {
-                logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
-                throw;
-            }
-        }
-
-        return chunks;
-    }
 
     /// <summary>
     /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
@@ -146,7 +108,7 @@ public class AzureOpenAIRag(
     /// <returns>List of text chunks matching query.</returns>
     public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
     {
-        EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(text);
+        EmbeddingsOptions embeddingsOptions = embedding.GetEmbeddingOptions(text);
 
         try
         {
@@ -169,15 +131,5 @@ public class AzureOpenAIRag(
             logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
             throw;
         }
-    }
-
-    EmbeddingsOptions GetEmbeddingOptions(string text)
-    {
-        string? embeddingName = config[GKeys.AzOpenAIEmbeddingName];
-        ArgumentException.ThrowIfNullOrWhiteSpace(embeddingName, nameof(embeddingName));
-
-        EmbeddingsOptions embeddingsOptions = new(embeddingName, new string[] { text });
-
-        return embeddingsOptions;
     }
 }
