@@ -66,12 +66,12 @@ public class AzureOpenAIQuery(IDynamicConfiguration config, ILlm llm, IRag rag) 
             userQuery
         ];
 
+        ManageChatHistory(chatHistory, userQuery);
+
         ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
         AzureOpenAIChatRequest request = new(chatCompletionOptions);
 
         AzureOpenAIChatResponse lastResponse = await llm.AskAsync<AzureOpenAIChatResponse>(request, cancelToken);
-
-        ManageChatHistory(chatHistory, userQuery);
 
         return lastResponse.Text ?? string.Empty;
     }

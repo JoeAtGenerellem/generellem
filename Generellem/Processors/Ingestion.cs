@@ -1,8 +1,12 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
+using Azure;
+using Azure.AI.OpenAI;
+
 using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
+using Generellem.Embedding;
 using Generellem.Rag;
 using Generellem.Repository;
 using Generellem.Services;
@@ -17,6 +21,7 @@ namespace Generellem.Processors;
 public class Ingestion(
     IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact,
+    IEmbedding embedding,
     ILogger<Ingestion> logger,
     IRag rag) : IGenerellemIngestion
 {
@@ -68,7 +73,7 @@ public class Ingestion(
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
-                List<TextChunk> chunks = await rag.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
+                List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
                 await rag.IndexAsync(chunks, cancelToken);
 
                 if (cancelToken.IsCancellationRequested)

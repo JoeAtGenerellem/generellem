@@ -2,6 +2,7 @@
 
 using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
+using Generellem.Embedding;
 using Generellem.Rag;
 using Generellem.Repository;
 using Generellem.Services;
@@ -20,6 +21,7 @@ public class IngestionTests
     readonly Mock<IDocumentSource> docSourceMock = new();
     readonly Mock<IDocumentSourceFactory> docSourceFactoryMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
+    readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILogger<Ingestion>> logMock = new();
     readonly Mock<IRag> ragMock = new();
 
@@ -39,7 +41,7 @@ public class IngestionTests
             .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new List<string> { "Search Result" }));
 
-        ingestion = new Ingestion(docHashRepMock.Object, docSourceFactoryMock.Object, logMock.Object, ragMock.Object);
+        ingestion = new Ingestion(docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object, ragMock.Object);
     }
 
     void SetupGetDocumentsAsync(string filePath)
@@ -117,8 +119,8 @@ public class IngestionTests
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
-        ragMock.Verify(
-            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
+        embedMock.Verify(
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
             Times.Once());
     }
 
@@ -135,8 +137,8 @@ public class IngestionTests
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
-        ragMock.Verify(
-            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+        embedMock.Verify(
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
             Times.Never);
     }
 
@@ -189,8 +191,8 @@ public class IngestionTests
         docHashRepMock.Verify(
             docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
             Times.Never);
-        ragMock.Verify(
-            rag => rag.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+        embedMock.Verify(
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
             Times.Never);
     }
 }

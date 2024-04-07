@@ -1,4 +1,6 @@
 ﻿using Generellem.DocumentSource;
+using Generellem.Embedding;
+using Generellem.Embedding.AzureOpenAI;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Processors;
@@ -71,6 +73,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, DemoDocumentSourceFactory>();
     services.AddTransient<IDynamicConfiguration, DynamicConfiguration>();
+    services.AddTransient<IEmbedding, AzureOpenAIEmbedding>();
     services.AddTransient<IGenerellemIngestion, Ingestion>();
     services.AddTransient<IGenerellemQuery, AzureOpenAIQuery>();
     services.AddTransient<IHttpClientFactory, HttpClientFactory>();
