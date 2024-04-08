@@ -5,7 +5,7 @@ using Generellem.Services;
 
 namespace Generellem.Llm;
 
-public class LlmClientFactory(IDynamicConfiguration config)
+public class LlmClientFactory(IDynamicConfiguration config) : ILlmClientFactory
 {
     public virtual OpenAIClient CreateOpenAIClient()
     {

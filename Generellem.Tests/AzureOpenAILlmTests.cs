@@ -47,46 +47,43 @@ public class AzureOpenAILlmTests
     }
 
     [Fact]
-    public async Task TestAskAsync_WithNullEndpoint_ThrowsArgumentException()
+    public async Task PromptAsync_WithNullEndpoint_ThrowsArgumentException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            llm.AskAsync<IChatResponse>(null, CancellationToken.None));
+            llm.PromptAsync<IChatResponse>(null, CancellationToken.None));
     }
 
     [Fact]
-    public async Task TestAskAsync_WithValidInput_ReturnsResponse()
+    public async Task PromptAsync_WithValidInput_ReturnsResponse()
     {
         List<ChatMessage> chatMessages =
         [
             new ChatMessage(ChatRole.User, "What is Generellem?")
         ];
-        var request = new AzureOpenAIChatRequest(new ChatCompletionsOptions("generellem-deployment", chatMessages));
+        var request = new AzureOpenAIChatRequest()
+        {
+            Options = new ChatCompletionsOptions("generellem-deployment", chatMessages)
+        };
 
-        var result = await llm.AskAsync<IChatResponse>(request, CancellationToken.None);
+        var result = await llm.PromptAsync<IChatResponse>(request, CancellationToken.None);
 
         Assert.IsType<AzureOpenAIChatResponse>(result);
     }
 
     [Fact]
-    public async Task TestAskAsync_WithNullCompletionsOptions_ThrowsArgumentNullException()
+    public async Task PromptAsync_WithRequestFailedExceptionOnGetChatCompletions_LogsAnError()
     {
-        var request = new AzureOpenAIChatRequest(null);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            llm.AskAsync<IChatResponse>(request, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task AskAsync_WithRequestFailedExceptionOnGetChatCompletions_LogsAnError()
-    {
-        AzureOpenAIChatRequest request = new(new ChatCompletionsOptions("mydeployment", [new ChatMessage()]));
+        AzureOpenAIChatRequest request = new()
+        {
+            Options = new ChatCompletionsOptions("mydeployment", [new ChatMessage()])
+        };
 
         openAIClientMock
             .Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await llm.AskAsync<IChatResponse>(request, CancellationToken.None));
+            await llm.PromptAsync<IChatResponse>(request, CancellationToken.None));
 
         logMock
             .Verify(

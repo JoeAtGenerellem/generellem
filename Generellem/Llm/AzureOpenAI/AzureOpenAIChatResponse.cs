@@ -8,7 +8,7 @@ public class AzureOpenAIChatResponse : IChatResponse
     /// <summary>
     /// This constructor only supports unit testing - don't use for anything else.
     /// </summary>
-    protected AzureOpenAIChatResponse()
+    public AzureOpenAIChatResponse()
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     {
     }

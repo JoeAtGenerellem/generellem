@@ -1,7 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
-using Generellem.Rag;
 
 namespace Generellem.Embedding;
 

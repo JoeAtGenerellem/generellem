@@ -112,7 +112,6 @@ public class IngestionTests
             docHashRepMock.Object, 
             docSourceFactoryMock.Object, 
             embedMock.Object,
-            llmClientFactMock.Object,
             logMock.Object);
     }
 
@@ -371,77 +370,5 @@ public class IngestionTests
         azSearchSvcMock.Verify(
             srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
             Times.Once);
-    }
-
-    [Fact]
-    public async Task SearchAsync_CallsGetEmbeddingsAsync()
-    {
-        await ingestion.SearchAsync("text", CancellationToken.None);
-
-        openAIClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
-            Times.Once());
-    }
-
-    [Fact]
-    public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
-    {
-        await ingestion.SearchAsync("text", CancellationToken.None);
-
-        azSearchSvcMock.Verify(srchSvc =>
-            srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()),
-            Times.Once());
-    }
-
-    [Fact]
-    public async Task SearchAsync_ReturnsChunkContents()
-    {
-        const string ExpectedContent = "chunk1";
-
-        var result = await ingestion.SearchAsync("text", CancellationToken.None);
-
-        Assert.Equal(ExpectedContent, result.First());
-    }
-
-    [Fact]
-    public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
-    {
-        openAIClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-            .Throws(new RequestFailedException("Unauthorized"));
-
-        await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await ingestion.SearchAsync("text", CancellationToken.None));
-
-        logMock
-            .Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-                Times.Once);
-    }
-
-    [Fact]
-    public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
-    {
-        azSearchSvcMock
-            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
-            .Throws(new RequestFailedException("Unauthorized"));
-
-        await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await ingestion.SearchAsync("text", CancellationToken.None));
-
-        logMock
-            .Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-                Times.Once);
     }
 }

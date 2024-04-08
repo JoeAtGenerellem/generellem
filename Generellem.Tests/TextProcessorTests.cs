@@ -1,4 +1,6 @@
-﻿namespace Generellem.Rag.Tests;
+﻿using Generellem.Embedding;
+
+namespace Generellem.Rag.Tests;
 
 public class TextProcessorTests
 {

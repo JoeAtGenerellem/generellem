@@ -1,12 +1,14 @@
-﻿using Azure.AI.OpenAI;
+﻿using System.Text.Json;
+
+using Azure.AI.OpenAI;
 
 using Generellem.DocumentSource;
+using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
-using Generellem.Services;
+using Generellem.Services.Azure;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Generellem.Processors.Tests;
@@ -15,10 +17,11 @@ public class AzureOpenAIQueryTests
 {
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
-    readonly Mock<IDynamicConfiguration> configMock = new();
+    readonly Mock<IAzureSearchService> azSearchSvcMock = new();
+    readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILlm> llmMock = new();
+    readonly Mock<ILlmClientFactory> llmFactMock = new();
     readonly Mock<ILogger<AzureOpenAIQuery>> logMock = new();
-    readonly Mock<IGenerellemIngestion> ingestionMock = new();
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIQuery azureQuery;
@@ -26,100 +29,57 @@ public class AzureOpenAIQueryTests
 
     readonly List<IDocumentSource> docSources = [];
 
+    readonly AzureOpenAIChatRequest chatRequest = new();
+    readonly AzureOpenAIChatResponse chatResponse = new();
+
     public AzureOpenAIQueryTests()
     {
-        ingestionMock
-            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(new List<string> { "Search Result" }));
+        ragMock
+            .Setup(rag => rag.BuildRequestAsync<AzureOpenAIChatRequest>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Queue<ChatMessage>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatRequest);
         llmMock
-            .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
+            .Setup(llm => llm.PromptAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(chatResponse));
 
-        azureQuery = new AzureOpenAIQuery(configMock.Object, ingestionMock.Object, llmMock.Object);
+        azureQuery = new AzureOpenAIQuery(llmMock.Object, ragMock.Object);
     }
 
     [Fact]
-    public async Task AskAsync_WithNullDeploymentName_ThrowsArgumentNullException()
+    public async Task PromptAsync_CallsBuildRequestAsync()
     {
-        configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
+        await azureQuery.PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(
+            "Hello", chatHistory, CancellationToken.None);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-          azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None));
+        ragMock.Verify(rag => 
+            rag.BuildRequestAsync<AzureOpenAIChatRequest>(
+                It.IsAny<string>(), 
+                It.IsAny<string>(), 
+                It.IsAny<Queue<ChatMessage>>(), 
+                CancellationToken.None), 
+            Times.Once());
     }
 
     [Fact]
-    public async Task AskAsync_WithEmptyDeploymentName_ThrowsArgumentNullException()
+    public async Task PromptAsync_CallsAskAsync()
     {
-        configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
+        await azureQuery.PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(
+            "Hello", chatHistory, CancellationToken.None);
 
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None));
+        llmMock.Verify(llm => 
+            llm.PromptAsync<AzureOpenAIChatResponse>(
+                It.IsAny<IChatRequest>(), 
+                It.IsAny<CancellationToken>()), 
+            Times.Once);
     }
 
     [Fact]
-    public async Task AskAsync_CallsSearchAsync()
+    public async Task PromptAsync_ReturnsDetails()
     {
-        Mock<IConfigurationSection> configSection = new();
+        GenerellemQueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> queryDetails = 
+            await azureQuery.PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(
+                "Hello", chatHistory, CancellationToken.None);
 
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
-            .Returns("generellem");
-
-        await azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None);
-
-        ingestionMock.Verify(ingest => ingest.SearchAsync(It.IsAny<string>(), CancellationToken.None), Times.Once());
-    }
-
-    [Fact]
-    public async Task AskAsync_CallsAskAsync()
-    {
-        Mock<IConfigurationSection> configSection = new();
-
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
-            .Returns("generellem");
-
-        await azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None);
-
-        llmMock.Verify(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-    }
-
-    [Fact]
-    public async Task AskAsync_BuildsContextStringFromSearchResults()
-    {
-        var searchResults = new List<string> { "result1", "result2" };
-        ingestionMock
-            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(searchResults);
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
-            .Returns("generellem");
-
-        await azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None);
-
-        llmMock.Verify(llm =>
-            llm.AskAsync<AzureOpenAIChatResponse>(
-                It.IsAny<AzureOpenAIChatRequest>(),
-                It.IsAny<CancellationToken>()));
-    }
-
-    [Fact]
-    public async Task AskAsync_PopulatesChatHistory()
-    {
-        const string ExpectedQuery = "What is Generellem?";
-        var searchResults = new List<string> { "result1", "result2" };
-        ingestionMock
-            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(searchResults);
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
-            .Returns("generellem");
-
-        await azureQuery.AskAsync(ExpectedQuery, chatHistory, CancellationToken.None);
-
-        Assert.Single(chatHistory);
-        ChatMessage chatMessage = chatHistory.Peek();
-        Assert.Equal(ChatRole.User, chatMessage.Role);
-        Assert.Equal(ExpectedQuery, chatMessage.Content);
+        Assert.Same(chatRequest, queryDetails?.Request);
+        Assert.Same(chatResponse, queryDetails?.Response);
     }
 }
