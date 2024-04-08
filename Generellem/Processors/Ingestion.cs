@@ -7,11 +7,16 @@ using Azure.AI.OpenAI;
 using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
 using Generellem.Embedding;
+using Generellem.Llm;
 using Generellem.Rag;
 using Generellem.Repository;
 using Generellem.Services;
+using Generellem.Services.Azure;
+using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
+
+using Polly;
 
 namespace Generellem.Processors;
 
@@ -19,12 +24,43 @@ namespace Generellem.Processors;
 /// Ingests documents into the system
 /// </summary>
 public class Ingestion(
+    IAzureSearchService azSearchSvc,
     IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact,
     IEmbedding embedding,
-    ILogger<Ingestion> logger,
-    IRag rag) : IGenerellemIngestion
+    LlmClientFactory llmClientFact,
+    ILogger<Ingestion> logger) 
+    : IGenerellemIngestion
 {
+    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
+
+    readonly ResiliencePipeline pipeline =
+        new ResiliencePipelineBuilder()
+            .AddRetry(new()
+            {
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => ex is not GenerellemNeedsIngestionException)
+            })
+            .AddTimeout(TimeSpan.FromSeconds(7))
+            .Build();
+
+    /// <summary>
+    /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
+    /// </summary>
+    /// <param name="chunks">Mulitple <see cref="TextChunk"/> instances for a document.</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
+    {
+        if (chunks.Count is 0)
+            return;
+
+        await pipeline.ExecuteAsync(
+            async token => await azSearchSvc.CreateIndexAsync(token),
+            cancellationToken);
+        await pipeline.ExecuteAsync(
+            async token => await azSearchSvc.UploadDocumentsAsync(chunks, token),
+            cancellationToken);
+    }
+
     /// <summary>
     /// Recursive search of documents from specified document sources
     /// </summary>
@@ -74,13 +110,13 @@ public class Ingestion(
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
                 List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
-                await rag.IndexAsync(chunks, cancelToken);
+                await IndexAsync(chunks, cancelToken);
 
                 if (cancelToken.IsCancellationRequested)
                     break;
             }
 
-            await rag.RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
+            await RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
 
             progress.Report(new($"Completed the {docSource.Description} Document Source"));
         }
@@ -148,5 +184,80 @@ public class Ingestion(
             sb.Append(bytes[i].ToString("x2"));
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Deletes file refs from the index and local DB that aren't in the documentReferences argument.
+    /// </summary>
+    /// <remarks>
+    /// The assumption here is that for a given document source, we've identified
+    /// all of the files that we can process. However, if there's a file in the
+    /// index and not in the document source, the file must have been deleted.
+    /// </remarks>
+    /// <param name="docSource">Filters the documentReferences that can be deleted.</param>
+    /// <param name="documentReferences">Existing document references.</param>
+    /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    public async Task RemoveDeletedFilesAsync(string docSource, List<string> documentReferences, CancellationToken cancellationToken)
+    {
+        bool doesIndexExist = await azSearchSvc.DoesIndexExistAsync(cancellationToken);
+        if (!doesIndexExist)
+            return;
+
+        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSource, cancellationToken);
+
+        List<string> chunkIdsToDelete = new();
+        List<string> chunkDocumentReferencesToDelete = new();
+
+        foreach (TextChunk chunk in chunks)
+        {
+            if (chunk.DocumentReference is null || documentReferences.Contains(chunk.DocumentReference))
+                continue;
+
+            if (chunk?.ID is string chunkID)
+                chunkIdsToDelete.Add(chunkID);
+            if (chunk?.DocumentReference is string chunkDocumentReference)
+                chunkDocumentReferencesToDelete.Add(chunkDocumentReference);
+        }
+
+        if (chunkIdsToDelete.Count != 0)
+        {
+            await pipeline.ExecuteAsync(
+                async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
+                cancellationToken);
+            docHashRep.Delete(chunkDocumentReferencesToDelete);
+        }
+    }
+
+    /// <summary>
+    /// Performs Vector Search for chunks matching given text.
+    /// </summary>
+    /// <param name="text">Text for searching for matches.</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    /// <returns>List of text chunks matching query.</returns>
+    public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
+    {
+        EmbeddingsOptions embeddingsOptions = embedding.GetEmbeddingOptions(text);
+
+        try
+        {
+            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+            async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
+                cancellationToken);
+
+            ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
+            List<TextChunk> chunks = await pipeline.ExecuteAsync(
+                async token => await azSearchSvc.SearchAsync<TextChunk>(embedding, token),
+                cancellationToken);
+
+            return
+                (from chunk in chunks
+                 select chunk.Content)
+                .ToList();
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
     }
 }
