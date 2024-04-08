@@ -19,11 +19,13 @@ public class AzureOpenAIRagTests
     readonly Mock<IAzureSearchService> azSearchSvcMock = new();
     readonly Mock<IDocumentHashRepository> docHashRepMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
+    readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
-    readonly Mock<LlmClientFactory> llmClientFactMock = new();
     readonly Mock<OpenAIClient> openAIClientMock = new();
     readonly Mock<Response<Embeddings>> embeddingsMock = new();
+
+    readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly AzureOpenAIRag azureOpenAIRag;
     readonly ReadOnlyMemory<float> embedding;
@@ -45,10 +47,19 @@ public class AzureOpenAIRagTests
         ];
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
 
-        openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+        openAIClientMock
+            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
 
         embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
+
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIEndpointName])
+            .Returns("https://generellem");
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIApiKey])
+            .Returns("generellem-key");
+        llmClientFactMock = new(configMock.Object);
 
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 

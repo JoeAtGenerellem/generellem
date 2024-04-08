@@ -5,22 +5,8 @@ using Generellem.Services;
 
 namespace Generellem.Llm;
 
-public class LlmClientFactory
+public class LlmClientFactory(IDynamicConfiguration config)
 {
-    readonly IDynamicConfiguration config;
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    /// <summary>
-    /// This constructor only supports unit testing - don't use for anything else.
-    /// </summary>
-    protected LlmClientFactory() { }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-
-    public LlmClientFactory(IDynamicConfiguration config)
-    {
-        this.config = config;
-    }
-
     public virtual OpenAIClient CreateOpenAIClient()
     {
         string? endpointName = config[GKeys.AzOpenAIEndpointName];

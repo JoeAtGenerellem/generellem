@@ -11,7 +11,7 @@ namespace Generellem.Llm.Tests;
 
 public class LlmClientFactoryTests
 {
-    Mock<IDynamicConfiguration> configMock = new();
+    readonly Mock<IDynamicConfiguration> configMock = new();
 
     LlmClientFactory factory;
 

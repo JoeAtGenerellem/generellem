@@ -19,9 +19,10 @@ public class AzureOpenAIEmbedTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILogger<AzureOpenAIEmbedding>> logMock = new();
-    readonly Mock<LlmClientFactory> llmClientFactMock = new();
     readonly Mock<OpenAIClient> openAIClientMock = new();
     readonly Mock<Response<Embeddings>> embeddingsMock = new();
+
+    readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly IEmbedding azureOpenAIEmbedding;
     readonly ReadOnlyMemory<float> embedding;
@@ -41,6 +42,7 @@ public class AzureOpenAIEmbedTests
         configMock
             .Setup(config => config[GKeys.AzOpenAIApiKey])
             .Returns("generellem-key");
+        llmClientFactMock = new(configMock.Object);
 
         embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
         List<EmbeddingItem> embeddingItems =
