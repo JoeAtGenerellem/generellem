@@ -1,4 +1,4 @@
-﻿using Generellem.Rag;
+﻿using Generellem.Embedding;
 
 namespace Generellem.Services.Azure;
 

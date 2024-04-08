@@ -1,14 +1,9 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-using Azure;
-using Azure.AI.OpenAI;
-
 using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
 using Generellem.Embedding;
-using Generellem.Llm;
-using Generellem.Rag;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
@@ -28,12 +23,9 @@ public class Ingestion(
     IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact,
     IEmbedding embedding,
-    LlmClientFactory llmClientFact,
     ILogger<Ingestion> logger) 
     : IGenerellemIngestion
 {
-    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
-
     readonly ResiliencePipeline pipeline =
         new ResiliencePipelineBuilder()
             .AddRetry(new()
@@ -225,39 +217,6 @@ public class Ingestion(
                 async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
                 cancellationToken);
             docHashRep.Delete(chunkDocumentReferencesToDelete);
-        }
-    }
-
-    /// <summary>
-    /// Performs Vector Search for chunks matching given text.
-    /// </summary>
-    /// <param name="text">Text for searching for matches.</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    /// <returns>List of text chunks matching query.</returns>
-    public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
-    {
-        EmbeddingsOptions embeddingsOptions = embedding.GetEmbeddingOptions(text);
-
-        try
-        {
-            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
-            async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
-                cancellationToken);
-
-            ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
-            List<TextChunk> chunks = await pipeline.ExecuteAsync(
-                async token => await azSearchSvc.SearchAsync<TextChunk>(embedding, token),
-                cancellationToken);
-
-            return
-                (from chunk in chunks
-                 select chunk.Content)
-                .ToList();
-        }
-        catch (RequestFailedException rfEx)
-        {
-            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
-            throw;
         }
     }
 }

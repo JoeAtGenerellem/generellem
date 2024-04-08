@@ -5,8 +5,7 @@ using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
-
-using Generellem.Rag;
+using Generellem.Embedding;
 using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;

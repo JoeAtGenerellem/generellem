@@ -1,5 +1,5 @@
 ﻿
-using Generellem.Rag;
+using Generellem.Embedding;
 
 namespace Generellem.Processors;
 
@@ -39,12 +39,4 @@ public interface IGenerellemIngestion
     /// <param name="documentReferences">Existing documentReferences.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     Task RemoveDeletedFilesAsync(string docSource, List<string> documentReferences, CancellationToken cancelToken);
-
-    /// <summary>
-    /// Performs Vector Search for chunks matching given text.
-    /// </summary>
-    /// <param name="text">Text for searching for matches.</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    /// <returns>List of text chunks matching query.</returns>
-    Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken);
 }

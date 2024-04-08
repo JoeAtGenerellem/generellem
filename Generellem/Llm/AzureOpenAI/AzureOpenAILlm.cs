@@ -22,7 +22,7 @@ public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAIL
             .AddTimeout(TimeSpan.FromSeconds(3))
             .Build();
 
-    public virtual async Task<TResponse> AskAsync<TResponse>(IChatRequest? request, CancellationToken cancellationToken)
+    public virtual async Task<TResponse> PromptAsync<TResponse>(IChatRequest? request, CancellationToken cancellationToken)
         where TResponse : IChatResponse
     {
         ChatCompletionsOptions? completionsOptions = (request as AzureOpenAIChatRequest)?.Options;

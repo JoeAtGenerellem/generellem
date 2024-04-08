@@ -1,5 +1,4 @@
-﻿
-namespace Generellem.Rag;
+﻿namespace Generellem.Embedding;
 
 public class TextChunk
 {

@@ -1,11 +1,10 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 
-using Generellem.Document.DocumentTypes;
 using Generellem.Embedding;
 using Generellem.Llm;
+using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag.AzureOpenAI;
-using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
@@ -17,10 +16,9 @@ namespace Generellem.Rag.Tests;
 public class AzureOpenAIRagTests
 {
     readonly Mock<IAzureSearchService> azSearchSvcMock = new();
-    readonly Mock<IDocumentHashRepository> docHashRepMock = new();
-    readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IEmbedding> embedMock = new();
+    readonly Mock<ILlm> llmMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
 
     readonly Mock<OpenAIClient> openAIClientMock = new();
@@ -32,10 +30,6 @@ public class AzureOpenAIRagTests
 
     public AzureOpenAIRagTests()
     {
-        docTypeMock
-            .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
-            .ReturnsAsync("text content");
-
         embedMock
             .Setup(e => e.GetEmbeddingOptions(It.IsAny<string>()))
             .Returns(new EmbeddingsOptions());
@@ -79,87 +73,162 @@ public class AzureOpenAIRagTests
             }
         ];
         azSearchSvcMock
-            .Setup(srchSvc => srchSvc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-        azSearchSvcMock
-            .Setup(srchSvc => srchSvc.GetDocumentReferencesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(chunks);
-        azSearchSvcMock
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAIRag = new AzureOpenAIRag();
+        llmMock
+            .Setup(llm => llm.PromptAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
+
+        azureOpenAIRag = 
+            new AzureOpenAIRag(
+                azSearchSvcMock.Object, 
+                configMock.Object, 
+                embedMock.Object, 
+                llmClientFactMock.Object, 
+                llmMock.Object, 
+                logMock.Object);
     }
 
-    //[Fact]
-    //public async Task SearchAsync_CallsGetEmbeddingsAsync()
-    //{
-    //    await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+    [Fact]
+    public async Task BuildRequestAsync_BuildsContextStringFromSearchResults()
+    {
+        var searchResults = new List<TextChunk> 
+        { 
+            new TextChunk() { Content = "result1" },
+            new TextChunk() { Content = "result2" }
+        };
+        azSearchSvcMock
+            .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
+            .Returns("generellem");
 
-    //    openAIClientMock.Verify(
-    //        client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
-    //        Times.Once());
-    //}
+        AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
+            "Message", "Hello", new Queue<ChatMessage>(), CancellationToken.None);
 
-    //[Fact]
-    //public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
-    //{
-    //    await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+        Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
+        Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
+    }
 
-    //    azSearchSvcMock.Verify(srchSvc =>
-    //        srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()),
-    //        Times.Once());
-    //}
+    [Fact]
+    public async Task BuildRequestAsync_PopulatesChatHistory()
+    {
+        Queue<ChatMessage> chatHistory = new();
+        const string ExpectedQuery = "What is Generellem?";
+        var searchResults = new List<TextChunk>
+        {
+            new TextChunk() { Content = "result1" },
+            new TextChunk() { Content = "result2" }
+        };
+        azSearchSvcMock
+            .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
+            .Returns("generellem");
 
-    //[Fact]
-    //public async Task SearchAsync_ReturnsChunkContents()
-    //{
-    //    const string ExpectedContent = "chunk1";
+        AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
+            "Message", "What is Generellem?", chatHistory, CancellationToken.None);
 
-    //    var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+        Assert.Single(chatHistory);
+        ChatMessage chatMessage = chatHistory.Peek();
+        Assert.Equal(ChatRole.User, chatMessage.Role);
+        Assert.Equal(ExpectedQuery, chatMessage.Content);
+    }
 
-    //    Assert.Equal(ExpectedContent, result.First());
-    //}
+    [Fact]
+    public async Task AskAsync_WithNullDeploymentName_ThrowsArgumentNullException()
+    {
+        Queue<ChatMessage> chatHistory = new();
+        configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
 
-    //[Fact]
-    //public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
-    //{
-    //    openAIClientMock
-    //        .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-    //        .Throws(new RequestFailedException("Unauthorized"));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+          azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
+            "Message", "What is Generellem?", chatHistory, CancellationToken.None));
+    }
 
-    //    await Assert.ThrowsAsync<RequestFailedException>(async () =>
-    //        await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+    [Fact]
+    public async Task AskAsync_WithEmptyDeploymentName_ThrowsArgumentNullException()
+    {
+        Queue<ChatMessage> chatHistory = new();
+        configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
 
-    //    logMock
-    //        .Verify(
-    //            l => l.Log(
-    //                LogLevel.Error,
-    //                It.IsAny<EventId>(),
-    //                It.IsAny<It.IsAnyType>(),
-    //                It.IsAny<Exception>(),
-    //                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-    //            Times.Once);
-    //}
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+          azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
+            "Message", "What is Generellem?", chatHistory, CancellationToken.None));
+    }
 
-    //[Fact]
-    //public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
-    //{
-    //    azSearchSvcMock
-    //        .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
-    //        .Throws(new RequestFailedException("Unauthorized"));
+    [Fact]
+    public async Task SearchAsync_CallsGetEmbeddingsAsync()
+    {
+        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-    //    await Assert.ThrowsAsync<RequestFailedException>(async () =>
-    //        await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+        openAIClientMock.Verify(
+            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+            Times.Once());
+    }
 
-    //    logMock
-    //        .Verify(
-    //            l => l.Log(
-    //                LogLevel.Error,
-    //                It.IsAny<EventId>(),
-    //                It.IsAny<It.IsAnyType>(),
-    //                It.IsAny<Exception>(),
-    //                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-    //            Times.Once);
-    //}
+    [Fact]
+    public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
+    {
+        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+
+        azSearchSvcMock.Verify(srchSvc =>
+            srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()),
+            Times.Once());
+    }
+
+    [Fact]
+    public async Task SearchAsync_ReturnsChunkContents()
+    {
+        const string ExpectedContent = "chunk1";
+
+        var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+
+        Assert.Equal(ExpectedContent, result.First());
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
+    {
+        openAIClientMock
+            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
+    {
+        azSearchSvcMock
+            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .Throws(new RequestFailedException("Unauthorized"));
+
+        await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
+
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
 }

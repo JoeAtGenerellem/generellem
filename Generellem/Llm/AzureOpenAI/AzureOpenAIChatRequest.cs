@@ -2,17 +2,15 @@
 
 namespace Generellem.Llm.AzureOpenAI;
 
-public class AzureOpenAIChatRequest(ChatCompletionsOptions? options) : IChatRequest
+public class AzureOpenAIChatRequest() : IChatRequest
 {
-    public ChatCompletionsOptions? Options { get; set; } = options;
+    public ChatCompletionsOptions Options { get; set; } = new();
 
     public virtual string Text 
     {
         get
         {
-#pragma warning disable IDE0027 // Use expression body for accessor
             return Options?.Messages[0]?.Content ?? string.Empty;
-#pragma warning restore IDE0027 // Use expression body for accessor
         }
         set
         {
