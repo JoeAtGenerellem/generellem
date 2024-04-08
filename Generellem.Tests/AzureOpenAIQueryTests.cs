@@ -18,6 +18,7 @@ public class AzureOpenAIQueryTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<ILogger<AzureOpenAIQuery>> logMock = new();
+    readonly Mock<IGenerellemIngestion> ingestionMock = new();
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIQuery azureQuery;
@@ -27,14 +28,14 @@ public class AzureOpenAIQueryTests
 
     public AzureOpenAIQueryTests()
     {
-        ragMock
-            .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        ingestionMock
+            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new List<string> { "Search Result" }));
         llmMock
             .Setup(llm => llm.AskAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
-        azureQuery = new AzureOpenAIQuery(configMock.Object, llmMock.Object, ragMock.Object);
+        azureQuery = new AzureOpenAIQuery(configMock.Object, ingestionMock.Object, llmMock.Object);
     }
 
     [Fact]
@@ -66,7 +67,7 @@ public class AzureOpenAIQueryTests
 
         await azureQuery.AskAsync("Hello", chatHistory, CancellationToken.None);
 
-        ragMock.Verify(rag => rag.SearchAsync(It.IsAny<string>(), CancellationToken.None), Times.Once());
+        ingestionMock.Verify(ingest => ingest.SearchAsync(It.IsAny<string>(), CancellationToken.None), Times.Once());
     }
 
     [Fact]
@@ -87,8 +88,8 @@ public class AzureOpenAIQueryTests
     public async Task AskAsync_BuildsContextStringFromSearchResults()
     {
         var searchResults = new List<string> { "result1", "result2" };
-        ragMock
-            .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        ingestionMock
+            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResults);
         configMock
             .Setup(config => config[GKeys.AzOpenAIDeploymentName])
@@ -107,8 +108,8 @@ public class AzureOpenAIQueryTests
     {
         const string ExpectedQuery = "What is Generellem?";
         var searchResults = new List<string> { "result1", "result2" };
-        ragMock
-            .Setup(rag => rag.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        ingestionMock
+            .Setup(ingest => ingest.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResults);
         configMock
             .Setup(config => config[GKeys.AzOpenAIDeploymentName])

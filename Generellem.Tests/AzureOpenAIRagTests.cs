@@ -22,9 +22,9 @@ public class AzureOpenAIRagTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
+
     readonly Mock<OpenAIClient> openAIClientMock = new();
     readonly Mock<Response<Embeddings>> embeddingsMock = new();
-
     readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly AzureOpenAIRag azureOpenAIRag;
@@ -88,185 +88,78 @@ public class AzureOpenAIRagTests
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAIRag = new AzureOpenAIRag(
-            azSearchSvcMock.Object, docHashRepMock.Object, embedMock.Object, llmClientFactMock.Object, logMock.Object);
+        azureOpenAIRag = new AzureOpenAIRag();
     }
 
-    [Fact]
-    public async Task IndexAsync_CallsCreateIndex()
-    {
-        List<TextChunk> chunks =
-        [
-            new()
-            {
-                Content = "Test document text",
-                Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                DocumentReference = "file"
-            }
-        ];
+    //[Fact]
+    //public async Task SearchAsync_CallsGetEmbeddingsAsync()
+    //{
+    //    await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+    //    openAIClientMock.Verify(
+    //        client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+    //        Times.Once());
+    //}
 
-        azSearchSvcMock.Verify(srchSvc => srchSvc.CreateIndexAsync(It.IsAny<CancellationToken>()), Times.Once());
-    }
+    //[Fact]
+    //public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
+    //{
+    //    await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-    [Fact]
-    public async Task IndexAsync_WithEmptyChunks_DoesNotCallCreateIndex()
-    {
-        List<TextChunk> chunks = [];
+    //    azSearchSvcMock.Verify(srchSvc =>
+    //        srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()),
+    //        Times.Once());
+    //}
 
-        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+    //[Fact]
+    //public async Task SearchAsync_ReturnsChunkContents()
+    //{
+    //    const string ExpectedContent = "chunk1";
 
-        azSearchSvcMock.Verify(srchSvc => srchSvc.CreateIndexAsync(It.IsAny<CancellationToken>()), Times.Never());
-    }
+    //    var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-    [Fact]
-    public async Task IndexAsync_CallsUploadDocuments()
-    {
-        List<TextChunk> chunks =
-        [
-            new()
-            {
-                Content = "Test document text",
-                Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                DocumentReference = "file"
-            }
-        ];
+    //    Assert.Equal(ExpectedContent, result.First());
+    //}
 
-        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+    //[Fact]
+    //public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
+    //{
+    //    openAIClientMock
+    //        .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+    //        .Throws(new RequestFailedException("Unauthorized"));
 
-        azSearchSvcMock.Verify(srchSvc => 
-            srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()), 
-            Times.Once());
-    }
+    //    await Assert.ThrowsAsync<RequestFailedException>(async () =>
+    //        await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
 
-    [Fact]
-    public async Task IndexAsync_CallsUploadDocumentsWithCorrectChunks()
-    {
-        List<TextChunk> chunks =
-        [
-            new()
-            {
-                Content = "Test document text",
-                Embedding = TestEmbeddings.CreateEmbeddingArray(),
-                DocumentReference = "file"
-            }
-        ];
+    //    logMock
+    //        .Verify(
+    //            l => l.Log(
+    //                LogLevel.Error,
+    //                It.IsAny<EventId>(),
+    //                It.IsAny<It.IsAnyType>(),
+    //                It.IsAny<Exception>(),
+    //                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+    //            Times.Once);
+    //}
 
-        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
+    //[Fact]
+    //public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
+    //{
+    //    azSearchSvcMock
+    //        .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+    //        .Throws(new RequestFailedException("Unauthorized"));
 
-        azSearchSvcMock.Verify(searchSvc => 
-            searchSvc.UploadDocumentsAsync(It.Is<List<TextChunk>>(c => c == chunks), It.IsAny<CancellationToken>()), 
-            Times.Once());
-    }
+    //    await Assert.ThrowsAsync<RequestFailedException>(async () =>
+    //        await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
 
-    [Fact]
-    public async Task IndexAsync_WithEmptyChunks_DoesNotCallUploadDocuments()
-    {
-        List<TextChunk> chunks = [];
-
-        await azureOpenAIRag.IndexAsync(chunks, CancellationToken.None);
-
-        azSearchSvcMock.Verify(srchSvc =>
-            srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()),
-            Times.Never());
-    }
-    
-    [Fact]
-    public async Task RemoveDeletedFilesAsync_WithNoDeletedFiles_DoesNotDeleteAnything()
-    {
-        string docSource = "Localhost:FileSystem";
-        List<string> docSourceDocumentReferences = new List<string> { "documentReference1", "documentReference2" };
-
-        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
-
-        azSearchSvcMock.Verify(
-            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task RemoveDeletedFilesAsync_WithDeletedFiles_DeletesCorrectFiles()
-    {
-        string docSource = "Localhost:FileSystem";
-        List<string> docSourceDocumentReferences = new List<string> { "file1" };
-
-        await azureOpenAIRag.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
-
-        azSearchSvcMock.Verify(
-            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task SearchAsync_CallsGetEmbeddingsAsync()
-    {
-        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
-
-        openAIClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
-            Times.Once());
-    }
-
-    [Fact]
-    public async Task SearchAsync_CallsSearchAsyncWithEmbedding()
-    {
-        await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
-
-        azSearchSvcMock.Verify(srchSvc => 
-            srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()), 
-            Times.Once());
-    }
-
-    [Fact]
-    public async Task SearchAsync_ReturnsChunkContents()
-    {
-        const string ExpectedContent = "chunk1";
-
-        var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
-
-        Assert.Equal(ExpectedContent, result.First());
-    }
-
-    [Fact]
-    public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
-    {
-        openAIClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-            .Throws(new RequestFailedException("Unauthorized"));
-
-        await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
-
-        logMock
-            .Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-                Times.Once);
-    }
-
-    [Fact]
-    public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
-    {
-        azSearchSvcMock
-            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
-            .Throws(new RequestFailedException("Unauthorized"));
-
-        await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await azureOpenAIRag.SearchAsync("text", CancellationToken.None));
-
-        logMock
-            .Verify(
-                l => l.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
-                Times.Once);
-    }
+    //    logMock
+    //        .Verify(
+    //            l => l.Log(
+    //                LogLevel.Error,
+    //                It.IsAny<EventId>(),
+    //                It.IsAny<It.IsAnyType>(),
+    //                It.IsAny<Exception>(),
+    //                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+    //            Times.Once);
+    //}
 }

@@ -15,7 +15,7 @@ namespace Generellem.Processors;
 /// <remarks>
 /// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIQuery(IDynamicConfiguration config, ILlm llm, IRag rag) : IGenerellemQuery
+public class AzureOpenAIQuery(IDynamicConfiguration config, IGenerellemIngestion ingestion, ILlm llm/*, IRag rag*/) : IGenerellemQuery
 {
     /// <summary>
     /// We use this to summarize the user query, based on recent context.
@@ -50,7 +50,7 @@ public class AzureOpenAIQuery(IDynamicConfiguration config, ILlm llm, IRag rag) 
 
         string userIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
 
-        List<string> matchingDocuments = await rag.SearchAsync(userIntent, cancelToken);
+        List<string> matchingDocuments = await ingestion.SearchAsync(userIntent, cancelToken);
 
         string context =
             "\nContext: \n\n" +
