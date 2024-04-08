@@ -2,6 +2,7 @@
 using Azure.AI.OpenAI;
 
 using Generellem.Llm.AzureOpenAI;
+using Generellem.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -9,15 +10,25 @@ namespace Generellem.Llm.Tests;
 
 public class AzureOpenAILlmTests
 {
+    readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<ILogger<AzureOpenAILlm>> logMock = new();
-    readonly Mock<LlmClientFactory> llmClientFactMock = new();
     readonly Mock<OpenAIClient> openAIClientMock = new();
     readonly Mock<Response<ChatCompletions>> completionsMock = new();
+
+    readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly AzureOpenAILlm llm;
 
     public AzureOpenAILlmTests()
     {
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIEndpointName])
+            .Returns("https://generellem");
+        configMock
+            .Setup(config => config[GKeys.AzOpenAIApiKey])
+            .Returns("generellem-key");
+        llmClientFactMock = new(configMock.Object);
+
         List<ChatChoice> chatChoices =
         [
             AzureOpenAIModelFactory.ChatChoice(
