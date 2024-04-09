@@ -34,7 +34,7 @@ public interface IGenerellemQuery
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <returns>LLM response</returns>
-    Task<GenerellemQueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    Task<QueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest
         where TResponse : IChatResponse;
 }

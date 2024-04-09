@@ -12,9 +12,6 @@ namespace Generellem.Processors;
 /// <summary>
 /// Orchestrates Retrieval-Augmented Generation (RAG)
 /// </summary>
-/// <remarks>
-/// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
-/// </remarks>
 public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
 {
     /// <summary>
@@ -35,7 +32,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
     /// <returns>Azure OpenAI response text</returns>
     public async Task<string> AskAsync(string queryText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
     {
-        GenerellemQueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> response = 
+        QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> response = 
             await PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(queryText, chatHistory, cancelToken);
 
         return response.Request?.Text ?? string.Empty;
@@ -49,7 +46,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
     /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Azure OpenAI response</returns>
-    public virtual async Task<GenerellemQueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(
+    public virtual async Task<QueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(
         string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest
         where TResponse : IChatResponse
@@ -59,7 +56,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
 
         AzureOpenAIChatResponse response = await llm.PromptAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
-        return new GenerellemQueryDetails<TRequest, TResponse>
+        return new QueryDetails<TRequest, TResponse>
         {
             Request = (TRequest)(IChatRequest)request,
             Response = (TResponse)(IChatResponse) response

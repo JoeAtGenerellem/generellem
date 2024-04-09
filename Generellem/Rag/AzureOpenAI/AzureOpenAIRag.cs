@@ -6,6 +6,7 @@ using Azure.AI.OpenAI;
 using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
+using Generellem.Processors;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Services.Exceptions;
@@ -19,6 +20,9 @@ namespace Generellem.Rag.AzureOpenAI;
 /// <summary>
 /// Performs Retrieval-Augmented Generation (RAG) for Azure OpenAI.
 /// </summary>
+/// <remarks>
+/// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
+/// </remarks>
 public class AzureOpenAIRag(
     IAzureSearchService azSearchSvc,
     IDynamicConfiguration config,
@@ -67,8 +71,9 @@ public class AzureOpenAIRag(
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
 
         request.SummarizedUserIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
+        string summarizedIntentMessage = request.SummarizedUserIntent.Response?.Text ?? string.Empty;
 
-        request.TextChunks = await SearchAsync(request.SummarizedUserIntent, cancelToken);
+        request.TextChunks = await SearchAsync(summarizedIntentMessage, cancelToken);
 
         foreach (TextChunk chunk in request.TextChunks)
             chunk.Embedding = null;
@@ -115,8 +120,9 @@ public class AzureOpenAIRag(
     /// <param name="chatHistory">Context with previous questions the user asked.</param>
     /// <param name="deploymentName">Name of deployed LLM that we're using.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    /// <returns>Clarification of user query, based on context.</returns>
-    protected virtual async Task<string> SummarizeUserIntentAsync(string userQuery, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+    /// <returns><see cref="QueryDetails{TRequest, TResponse}"/> including clarification of user query, based on context.</returns>
+    protected virtual async Task<QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse>> SummarizeUserIntentAsync(
+        string userQuery, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
     {
         StringBuilder sb = new();
 
@@ -137,7 +143,11 @@ public class AzureOpenAIRag(
 
         AzureOpenAIChatResponse lastResponse = await llm.PromptAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
-        return lastResponse.Text ?? string.Empty;
+        return new QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse>()
+        {
+            Request = request,
+            Response = lastResponse
+        };
     }
 
     /// <summary>
