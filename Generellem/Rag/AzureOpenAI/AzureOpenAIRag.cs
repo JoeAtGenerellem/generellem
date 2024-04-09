@@ -1,16 +1,18 @@
-﻿using Azure.AI.OpenAI;
+﻿using System.Text;
+
 using Azure;
+using Azure.AI.OpenAI;
 
-using Generellem.Services;
-using Generellem.Services.Exceptions;
-
-using Polly;
 using Generellem.Embedding;
 using Generellem.Llm;
-using Generellem.Services.Azure;
-using Microsoft.Extensions.Logging;
 using Generellem.Llm.AzureOpenAI;
-using System.Text;
+using Generellem.Services;
+using Generellem.Services.Azure;
+using Generellem.Services.Exceptions;
+
+using Microsoft.Extensions.Logging;
+
+using Polly;
 
 namespace Generellem.Rag.AzureOpenAI;
 
@@ -56,17 +58,25 @@ public class AzureOpenAIRag(
     public async Task<TRequest> BuildRequestAsync<TRequest>(string systemMessage, string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new()
     {
+        AzureOpenAIChatRequest request = new()
+        {
+            ChatHistory = chatHistory
+        };
+
         string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
 
-        string userIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
+        request.SummarizedUserIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
 
-        List<string> matchingDocuments = await SearchAsync(userIntent, cancelToken);
+        request.TextChunks = await SearchAsync(request.SummarizedUserIntent, cancelToken);
+
+        foreach (TextChunk chunk in request.TextChunks)
+            chunk.Embedding = null;
 
         string context =
             "\nContext: \n\n" +
             "```" +
-            string.Join("\n\n", matchingDocuments) +
+            string.Join("\n\n", request.TextChunks.Select(c => c.Content)) +
             "```\n";
 
         ChatMessage userQuery = new(ChatRole.User, requestText);
@@ -79,8 +89,8 @@ public class AzureOpenAIRag(
 
         ManageChatHistory(chatHistory, userQuery);
 
-        ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
-        return (TRequest)(IChatRequest) new AzureOpenAIChatRequest() { Options = chatCompletionOptions };
+        request.Options = new ChatCompletionsOptions(deploymentName, messages);
+        return (TRequest)(IChatRequest) request;
     }
 
     /// <summary>
@@ -136,7 +146,7 @@ public class AzureOpenAIRag(
     /// <param name="text">Text for searching for matches.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns>List of text chunks matching query.</returns>
-    public virtual async Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken)
+    public virtual async Task<List<TextChunk>> SearchAsync(string text, CancellationToken cancellationToken)
     {
         EmbeddingsOptions embeddingsOptions = embedding.GetEmbeddingOptions(text);
 
@@ -147,14 +157,16 @@ public class AzureOpenAIRag(
                 cancellationToken);
 
             ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
+
             List<TextChunk> chunks = await pipeline.ExecuteAsync(
                 async token => await azSearchSvc.SearchAsync<TextChunk>(embedding, token),
                 cancellationToken);
 
-            return
-                (from chunk in chunks
-                 select chunk.Content)
-                .ToList();
+            return chunks;
+            //return
+            //    (from chunk in chunks
+            //     select chunk.Content)
+            //    .ToList();
         }
         catch (RequestFailedException rfEx)
         {

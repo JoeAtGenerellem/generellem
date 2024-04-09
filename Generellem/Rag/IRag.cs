@@ -1,7 +1,7 @@
 ﻿using Azure.AI.OpenAI;
 
+using Generellem.Embedding;
 using Generellem.Llm;
-using Generellem.Llm.AzureOpenAI;
 
 namespace Generellem.Rag;
 
@@ -31,6 +31,6 @@ public interface IRag
     /// </summary>
     /// <param name="text">Text for searching for matches.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    /// <returns>List of text chunks matching query.</returns>
-    Task<List<string>> SearchAsync(string text, CancellationToken cancellationToken);
+    /// <returns>List of <see cref="TextChunk"> matching query.</returns>
+    Task<List<TextChunk>> SearchAsync(string text, CancellationToken cancellationToken);
 }
