@@ -75,7 +75,7 @@ public class AzureOpenAIQueryTests
     [Fact]
     public async Task PromptAsync_ReturnsDetails()
     {
-        GenerellemQueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> queryDetails = 
+        QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> queryDetails = 
             await azureQuery.PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(
                 "Hello", chatHistory, CancellationToken.None);
 

@@ -1,6 +1,7 @@
 ﻿using Azure.AI.OpenAI;
 
 using Generellem.Embedding;
+using Generellem.Processors;
 
 namespace Generellem.Llm.AzureOpenAI;
 
@@ -10,7 +11,7 @@ public class AzureOpenAIChatRequest : IChatRequest
 
     public ChatCompletionsOptions Options { get; set; } = new();
 
-    public string SummarizedUserIntent { get; set; } = string.Empty;
+    public QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> SummarizedUserIntent { get; set; } = new();
 
     public List<TextChunk> TextChunks { get; set; } = new();
 

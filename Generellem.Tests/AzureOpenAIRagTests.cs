@@ -95,8 +95,8 @@ public class AzureOpenAIRagTests
     {
         var searchResults = new List<TextChunk> 
         { 
-            new TextChunk() { Content = "result1" },
-            new TextChunk() { Content = "result2" }
+            new() { Content = "result1" },
+            new() { Content = "result2" }
         };
         azSearchSvcMock
             .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
@@ -119,8 +119,8 @@ public class AzureOpenAIRagTests
         const string ExpectedQuery = "What is Generellem?";
         var searchResults = new List<TextChunk>
         {
-            new TextChunk() { Content = "result1" },
-            new TextChunk() { Content = "result2" }
+            new() { Content = "result1" },
+            new() { Content = "result2" }
         };
         azSearchSvcMock
             .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
@@ -185,9 +185,9 @@ public class AzureOpenAIRagTests
     {
         const string ExpectedContent = "chunk1";
 
-        var result = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
+        List<TextChunk> chunks = await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-        Assert.Equal(ExpectedContent, result.First());
+        Assert.Equal(ExpectedContent, chunks.First().Content);
     }
 
     [Fact]

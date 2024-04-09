@@ -2,7 +2,7 @@
 
 namespace Generellem.Processors;
 
-public class GenerellemQueryDetails<TRequest, TResponse>
+public class QueryDetails<TRequest, TResponse>
     where TRequest : IChatRequest
     where TResponse : IChatResponse
 {
