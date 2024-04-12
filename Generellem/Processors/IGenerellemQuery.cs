@@ -1,6 +1,4 @@
-﻿using Azure;
-using Azure.AI.OpenAI;
-using Azure.Core;
+﻿using Azure.AI.OpenAI;
 
 using Generellem.Llm;
 
@@ -12,11 +10,6 @@ namespace Generellem.Processors;
 /// </summary>
 public interface IGenerellemQuery
 {
-    /// <summary>
-    /// Instructions to the LLM on how interpret query and respond.
-    /// </summary>
-    string SystemMessage { get; set; }
-
     /// <summary>
     /// Performs whatever process you need to prepare a user's text and handle the response
     /// </summary>
