@@ -106,7 +106,7 @@ public class AzureOpenAIRagTests
             .Returns("generellem");
 
         AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Message", "Hello", new Queue<ChatMessage>(), CancellationToken.None);
+            "Hello", new Queue<ChatMessage>(), CancellationToken.None);
 
         Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
         Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
@@ -130,7 +130,7 @@ public class AzureOpenAIRagTests
             .Returns("generellem");
 
         AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Message", "What is Generellem?", chatHistory, CancellationToken.None);
+            "What is Generellem?", chatHistory, CancellationToken.None);
 
         Assert.Single(chatHistory);
         ChatMessage chatMessage = chatHistory.Peek();
@@ -146,7 +146,7 @@ public class AzureOpenAIRagTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
           azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Message", "What is Generellem?", chatHistory, CancellationToken.None));
+            "What is Generellem?", chatHistory, CancellationToken.None));
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class AzureOpenAIRagTests
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
           azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Message", "What is Generellem?", chatHistory, CancellationToken.None));
+            "What is Generellem?", chatHistory, CancellationToken.None));
     }
 
     [Fact]

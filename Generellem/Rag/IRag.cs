@@ -15,15 +15,30 @@ namespace Generellem.Rag;
 public interface IRag
 {
     /// <summary>
+    /// Instructions to the LLM on how interpret query and respond.
+    /// </summary>
+    string SystemMessage { get; set; }
+
+    /// <summary>
+    /// Tradeoff in accuracy vs creativity.
+    /// </summary>
+    /// <remarks>
+    /// Range can vary, depending on model.
+    /// e.g. OpenAI range is 0 to 2 but
+    /// Mistrial range is 0 to 1
+    /// </remarks>
+    float Temperature { get; set; }
+
+    /// <summary>
     /// Builds a request based on prompt content.
     /// </summary>
     /// <typeparam name="TRequest">Type of request for LLM.</typeparam>
-    /// <param name="systemMessage">Instructions to the LLM on how to process the request.</param>
     /// <param name="requestText">Text from user.</param>
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// 
     /// <returns>Full request that can be sent to the LLM.</returns>
-    Task<TRequest> BuildRequestAsync<TRequest>(string systemMessage, string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new();
 
     /// <summary>

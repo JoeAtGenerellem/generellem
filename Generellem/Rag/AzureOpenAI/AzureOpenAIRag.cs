@@ -40,6 +40,19 @@ public class AzureOpenAIRag(
         "between a user and an assistant. Given the chat history and " +
         "user's query, infer the user's real intent.";
 
+    /// <summary>
+    /// Instructions to the LLM on how interpret query and respond.
+    /// </summary>
+    public string SystemMessage { get; set; } =
+        "You are a professional AI bot that returns accurate content for busy workers.\n" +
+        "Please answer the user's question using only information you can find in the context.\n" +
+        "If the user's question is unrelated to the information in the context, say you don't know.\n";
+
+    /// <summary>
+    /// Tradeoff in accuracy vs creativity - ranges from 0 to 2 in OpenAI
+    /// </summary>
+    public float Temperature { get; set; } = 0;
+
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
     readonly ResiliencePipeline pipeline = 
@@ -54,12 +67,12 @@ public class AzureOpenAIRag(
     /// <summary>
     /// Builds a request based on prompt content.
     /// </summary>
-    /// <param name="systemMessage">Instructions to the LLM on how to process the request.</param>
     /// <param name="requestText">Text from user.</param>
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// 
     /// <returns>Full request that can be sent to the LLM.</returns>
-    public async Task<TRequest> BuildRequestAsync<TRequest>(string systemMessage, string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new()
     {
         AzureOpenAIChatRequest request = new()
@@ -73,6 +86,29 @@ public class AzureOpenAIRag(
         request.SummarizedUserIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
         string summarizedIntentMessage = request.SummarizedUserIntent.Response?.Text ?? string.Empty;
 
+        string context = await BuildContext(request, summarizedIntentMessage, cancelToken);
+
+        ChatMessage userQuery = new(ChatRole.User, requestText);
+
+        List<ChatMessage> messages =
+        [
+            new ChatMessage(ChatRole.System, SystemMessage + context),
+            userQuery
+        ];
+
+        ManageChatHistory(chatHistory, userQuery);
+
+        request.Options =
+            new ChatCompletionsOptions(deploymentName, messages)
+            {
+                Temperature = Temperature
+            };
+
+        return (TRequest)(IChatRequest)request;
+    }
+
+    protected virtual async Task<string> BuildContext(AzureOpenAIChatRequest request, string summarizedIntentMessage, CancellationToken cancelToken)
+    {
         request.TextChunks = await SearchAsync(summarizedIntentMessage, cancelToken);
 
         foreach (TextChunk chunk in request.TextChunks)
@@ -83,19 +119,7 @@ public class AzureOpenAIRag(
             "```" +
             string.Join("\n\n", request.TextChunks.Select(c => c.Content)) +
             "```\n";
-
-        ChatMessage userQuery = new(ChatRole.User, requestText);
-
-        List<ChatMessage> messages =
-        [
-            new ChatMessage(ChatRole.System, systemMessage + context),
-            userQuery
-        ];
-
-        ManageChatHistory(chatHistory, userQuery);
-
-        request.Options = new ChatCompletionsOptions(deploymentName, messages);
-        return (TRequest)(IChatRequest) request;
+        return context;
     }
 
     /// <summary>

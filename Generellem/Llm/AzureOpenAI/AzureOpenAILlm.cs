@@ -19,7 +19,7 @@ public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAIL
     readonly ResiliencePipeline pipeline = 
         new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions())
-            .AddTimeout(TimeSpan.FromSeconds(3))
+            .AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
 
     public virtual async Task<TResponse> PromptAsync<TResponse>(IChatRequest? request, CancellationToken cancellationToken)

@@ -1,11 +1,8 @@
-﻿using Azure;
-using Azure.AI.OpenAI;
-using Azure.Core;
+﻿using Azure.AI.OpenAI;
 
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
-using Generellem.Services;
 
 namespace Generellem.Processors;
 
@@ -14,14 +11,6 @@ namespace Generellem.Processors;
 /// </summary>
 public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
 {
-    /// <summary>
-    /// Instructions to the LLM on how interpret query and respond.
-    /// </summary>
-    public string SystemMessage { get; set; } =
-        "You are a professional AI bot that returns accurate content for busy workers.\n" +
-        "Please answer the user's question using only information you can find in the context.\n" +
-        "If the user's question is unrelated to the information in the context, say you don't know.\n";
-
     /// <summary>
     /// Searches for context, builds a prompt, and gets a response from Azure OpenAI
     /// </summary>
@@ -52,7 +41,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
         where TResponse : IChatResponse
     {
         AzureOpenAIChatRequest request = 
-            await rag.BuildRequestAsync<AzureOpenAIChatRequest>(SystemMessage, requestText, chatHistory, cancelToken);
+            await rag.BuildRequestAsync<AzureOpenAIChatRequest>(requestText, chatHistory, cancelToken);
 
         AzureOpenAIChatResponse response = await llm.PromptAsync<AzureOpenAIChatResponse>(request, cancelToken);
 

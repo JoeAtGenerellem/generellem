@@ -35,7 +35,7 @@ public class AzureOpenAIQueryTests
     public AzureOpenAIQueryTests()
     {
         ragMock
-            .Setup(rag => rag.BuildRequestAsync<AzureOpenAIChatRequest>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Queue<ChatMessage>>(), It.IsAny<CancellationToken>()))
+            .Setup(rag => rag.BuildRequestAsync<AzureOpenAIChatRequest>(It.IsAny<string>(), It.IsAny<Queue<ChatMessage>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chatRequest);
         llmMock
             .Setup(llm => llm.PromptAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
@@ -52,7 +52,6 @@ public class AzureOpenAIQueryTests
 
         ragMock.Verify(rag => 
             rag.BuildRequestAsync<AzureOpenAIChatRequest>(
-                It.IsAny<string>(), 
                 It.IsAny<string>(), 
                 It.IsAny<Queue<ChatMessage>>(), 
                 CancellationToken.None), 
