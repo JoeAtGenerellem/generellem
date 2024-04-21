@@ -41,7 +41,7 @@ public class TextProcessor
             chunks.Add(
                 new TextChunk()
                 {
-                    ID = Convert.ToBase64String(Encoding.UTF8.GetBytes(documentReference)),
+                    ID = Guid.NewGuid().ToString(),
                     Content = content,
                     DocumentReference = documentReference
                 });
