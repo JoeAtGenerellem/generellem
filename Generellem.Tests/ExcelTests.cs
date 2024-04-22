@@ -15,7 +15,7 @@ public class ExcelTests
     [Fact]
     public async Task GetTextAsync_WithXlsFile_ReturnsExcelText()
     {
-        var fileName = "TestDocs\\ExcelDoc2.xls";
+        var fileName = "TestDocs/ExcelDoc2.xls";
         using FileStream fileStr = File.Open(fileName, FileMode.Open);
 
         var result = await excel.GetTextAsync(fileStr, fileName);
@@ -27,7 +27,7 @@ public class ExcelTests
     [Fact]
     public async Task GetTextAsync_WithXlsxFile_ReturnsExcelText()
     {
-        var fileName = "TestDocs\\ExcelDoc1.xlsx";
+        var fileName = "TestDocs/ExcelDoc3.xlsx";
         using FileStream fileStr = File.Open(fileName, FileMode.Open);
 
         var result = await excel.GetTextAsync(fileStr, fileName);
@@ -39,7 +39,7 @@ public class ExcelTests
     [Fact]
     public async Task GetTextAsync_WithNonExcelFile_ThrowsException()
     {
-        var fileName = "TestDocs\\file.txt";
+        var fileName = "TestDocs/file1.txt";
         using FileStream fileStr = File.Open(fileName, FileMode.Open);
 
         await Assert.ThrowsAsync<ArgumentException>(async () =>

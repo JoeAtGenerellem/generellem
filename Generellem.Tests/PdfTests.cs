@@ -13,7 +13,7 @@ public class PdfTests
     [Fact]
     public async Task GetTextAsync_WithValidPdf_ReturnsText()
     {
-        const string FilePath = "TestDocs\\PdfDoc1.pdf";
+        const string FilePath = "TestDocs/PdfDoc1.pdf";
         using Stream stream = File.OpenRead(FilePath);
         var pdf = new Pdf();
 

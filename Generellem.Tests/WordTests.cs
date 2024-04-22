@@ -6,8 +6,8 @@ namespace Generellem.DocTypes.Tests;
 
 public class WordTests
 {
-    const string DocXFileContents = "Test\r\nDocumentation";
-    const string DocFileContents = "Test\r\n\r\nDocumentation\r\n";
+    readonly string DocXFileContents = $"Test{Environment.NewLine}Documentation";
+    readonly string DocFileContents = $"Test\r\n{Environment.NewLine}Documentation\r\n";
 
     readonly Mock<Stream> streamMock = new();
 
@@ -23,7 +23,7 @@ public class WordTests
     [Fact]
     public async Task GetTextAsync_Docx_ReturnsText()
     {
-        var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc1.docx");
+        var result = await word.GetTextAsync(streamMock.Object, "TestDocs/WordDoc1.docx");
 
         Assert.Equal(DocXFileContents, result);
     }
@@ -31,7 +31,7 @@ public class WordTests
     [Fact]
     public async Task GetTextAsync_Doc_ReturnsText()
     {
-        var result = await word.GetTextAsync(streamMock.Object, "TestDocs\\WordDoc2.doc");
+        var result = await word.GetTextAsync(streamMock.Object, "TestDocs/WordDoc2.doc");
 
         Assert.Equal(DocFileContents, result);
     }
