@@ -11,7 +11,7 @@ public class PowerpointTests
     [Fact]
     public async Task GetTextAsync_WithValidFile_ReturnsText()
     {
-        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/PowerpointDoc.pptx");
+        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/PowerPointDoc.pptx");
 
         Assert.NotNull(text);
         Assert.NotEmpty(text);
