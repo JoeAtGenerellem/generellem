@@ -21,7 +21,7 @@ public class TextTests
     [Fact]
     public async Task GetTextAsync_ReturnsFileContents()
     {
-        const string TestFileName = "TestDocs\\file.txt";
+        const string TestFileName = "TestDocs/file2.txt";
         using var stream = File.OpenRead(TestFileName);
 
         string result = await text.GetTextAsync(stream, TestFileName);

@@ -11,7 +11,7 @@ public class PowerpointTests
     [Fact]
     public async Task GetTextAsync_WithValidFile_ReturnsText()
     {
-        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs\\PowerpointDoc.pptx");
+        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/PowerPointDoc.pptx");
 
         Assert.NotNull(text);
         Assert.NotEmpty(text);
@@ -21,13 +21,13 @@ public class PowerpointTests
     public async Task GetTextAsync_WithInvalidFile_ThrowsException()
     {
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
-            powerpoint.GetTextAsync(streamMock.Object, "TestDocs\\Invalid.pptx"));
+            powerpoint.GetTextAsync(streamMock.Object, "TestDocs/Invalid.pptx"));
     }
 
     [Fact]
     public async Task GetTextAsync_WithNoText_ReturnsEmpty()
     {
-        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs\\EmptyDeck.pptx");
+        var text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/EmptyDeck.pptx");
 
         Assert.Empty(text);
     }
