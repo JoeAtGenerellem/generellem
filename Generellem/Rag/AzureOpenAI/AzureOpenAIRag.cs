@@ -70,9 +70,8 @@ public class AzureOpenAIRag(
     /// <param name="requestText">Text from user.</param>
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    /// 
     /// <returns>Full request that can be sent to the LLM.</returns>
-    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new()
     {
         AzureOpenAIChatRequest request = new()
@@ -88,11 +87,11 @@ public class AzureOpenAIRag(
 
         string context = await BuildContext(request, summarizedIntentMessage, cancelToken);
 
-        ChatMessage userQuery = new(ChatRole.User, requestText);
+        ChatRequestUserMessage userQuery = new(requestText);
 
-        List<ChatMessage> messages =
+        List<ChatRequestMessage> messages =
         [
-            new ChatMessage(ChatRole.System, SystemMessage + context),
+            new ChatRequestSystemMessage(SystemMessage + context),
             userQuery
         ];
 
@@ -127,7 +126,7 @@ public class AzureOpenAIRag(
     /// </summary>
     /// <param name="chatHistory"><see cref="Queue{T}"/> of <see cref="ChatMessage"/>, representing the current chat history.</param>
     /// <param name="userQuery"><see cref="ChatMessage"/> with the most recent user query to add to history.</param>
-    protected virtual void ManageChatHistory(Queue<ChatMessage> chatHistory, ChatMessage userQuery)
+    protected virtual void ManageChatHistory(Queue<ChatRequestUserMessage> chatHistory, ChatRequestUserMessage userQuery)
     {
         const int ChatHistorySize = 5;
 
@@ -146,17 +145,16 @@ public class AzureOpenAIRag(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns><see cref="QueryDetails{TRequest, TResponse}"/> including clarification of user query, based on context.</returns>
     protected virtual async Task<QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse>> SummarizeUserIntentAsync(
-        string userQuery, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+        string userQuery, Queue<ChatRequestUserMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
     {
         StringBuilder sb = new();
 
-        foreach (ChatMessage chatMessage in chatHistory)
+        foreach (ChatRequestUserMessage chatMessage in chatHistory)
             sb.AppendLine($"{chatMessage.Role}: {chatMessage.Content}\n");
 
-        List<ChatMessage> messages =
+        List<ChatRequestSystemMessage> messages =
         [
-            new ChatMessage(
-                ChatRole.System,
+            new ChatRequestSystemMessage(
                 ContextMessage +
                 $"\n\nChat History: {sb}" +
                 $"\n\nUser's query: {userQuery}")

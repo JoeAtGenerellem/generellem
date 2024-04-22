@@ -106,16 +106,16 @@ public class AzureOpenAIRagTests
             .Returns("generellem");
 
         AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Hello", new Queue<ChatMessage>(), CancellationToken.None);
+            "Hello", new Queue<ChatRequestUserMessage>(), CancellationToken.None);
 
         Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
-        Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
+        Assert.Contains(searchResults[1]?.Content ?? "", request.Text);
     }
 
     [Fact]
     public async Task BuildRequestAsync_PopulatesChatHistory()
     {
-        Queue<ChatMessage> chatHistory = new();
+        Queue<ChatRequestUserMessage> chatHistory = new();
         const string ExpectedQuery = "What is Generellem?";
         var searchResults = new List<TextChunk>
         {
@@ -133,7 +133,7 @@ public class AzureOpenAIRagTests
             "What is Generellem?", chatHistory, CancellationToken.None);
 
         Assert.Single(chatHistory);
-        ChatMessage chatMessage = chatHistory.Peek();
+        ChatRequestUserMessage chatMessage = chatHistory.Peek();
         Assert.Equal(ChatRole.User, chatMessage.Role);
         Assert.Equal(ExpectedQuery, chatMessage.Content);
     }
@@ -141,7 +141,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task AskAsync_WithNullDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatMessage> chatHistory = new();
+        Queue<ChatRequestUserMessage> chatHistory = new();
         configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -152,7 +152,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task AskAsync_WithEmptyDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatMessage> chatHistory = new();
+        Queue<ChatRequestUserMessage> chatHistory = new();
         configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
