@@ -38,7 +38,7 @@ public interface IRag
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// 
     /// <returns>Full request that can be sent to the LLM.</returns>
-    Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new();
 
     /// <summary>
