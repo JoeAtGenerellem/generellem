@@ -24,7 +24,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
         QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> response = 
             await PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(queryText, chatHistory, cancelToken);
 
-        return response.Request?.Text ?? string.Empty;
+        return response.Response?.Text ?? string.Empty;
     }
 
     /// <summary>
