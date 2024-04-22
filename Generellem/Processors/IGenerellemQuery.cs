@@ -17,7 +17,7 @@ public interface IGenerellemQuery
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <returns>LLM response</returns>
-    Task<string> AskAsync(string queryText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken);
+    Task<string> AskAsync(string queryText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken);
 
     /// <summary>
     /// Performs whatever process you need to prepare a user's text and handle the response
@@ -27,7 +27,7 @@ public interface IGenerellemQuery
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <returns>LLM response</returns>
-    Task<QueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    Task<QueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(string requestText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest
         where TResponse : IChatResponse;
 }

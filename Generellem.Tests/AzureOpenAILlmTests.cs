@@ -29,15 +29,11 @@ public class AzureOpenAILlmTests
             .Returns("generellem-key");
         llmClientFactMock = new(configMock.Object);
 
-        List<ChatChoice> chatChoices =
-        [
-            AzureOpenAIModelFactory.ChatChoice(
-                new ChatMessage(ChatRole.Assistant, "Generellem lets users use their own data for AI."))
-        ];
-        ChatCompletions completions = AzureOpenAIModelFactory.ChatCompletions(
-            Guid.NewGuid().ToString(),
-            DateTimeOffset.Now,
-            chatChoices);
+        ChatCompletions completions = 
+            AzureOpenAIModelFactory.ChatCompletions(
+                Guid.NewGuid().ToString(),
+                DateTimeOffset.Now,
+                []);
         openAIClientMock.Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(completionsMock.Object);
         completionsMock.SetupGet(m => m.Value).Returns(completions);
@@ -56,9 +52,9 @@ public class AzureOpenAILlmTests
     [Fact]
     public async Task PromptAsync_WithValidInput_ReturnsResponse()
     {
-        List<ChatMessage> chatMessages =
+        List<ChatRequestUserMessage> chatMessages =
         [
-            new ChatMessage(ChatRole.User, "What is Generellem?")
+            new ChatRequestUserMessage("What is Generellem?")
         ];
         var request = new AzureOpenAIChatRequest()
         {
@@ -75,7 +71,7 @@ public class AzureOpenAILlmTests
     {
         AzureOpenAIChatRequest request = new()
         {
-            Options = new ChatCompletionsOptions("mydeployment", [new ChatMessage()])
+            Options = new ChatCompletionsOptions("mydeployment", [new ChatRequestUserMessage("Some Content")])
         };
 
         openAIClientMock

@@ -19,7 +19,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
     /// <param name="chatHistory">History of questions asked to add to context</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Azure OpenAI response text</returns>
-    public async Task<string> AskAsync(string queryText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+    public async Task<string> AskAsync(string queryText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
     {
         QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> response = 
             await PromptAsync<AzureOpenAIChatRequest, AzureOpenAIChatResponse>(queryText, chatHistory, cancelToken);
@@ -36,7 +36,7 @@ public class AzureOpenAIQuery(ILlm llm, IRag rag) : IGenerellemQuery
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Azure OpenAI response</returns>
     public virtual async Task<QueryDetails<TRequest, TResponse>> PromptAsync<TRequest, TResponse>(
-        string requestText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
+        string requestText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest
         where TResponse : IChatResponse
     {

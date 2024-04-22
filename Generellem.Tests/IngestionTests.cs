@@ -39,7 +39,7 @@ public class IngestionTests
 
     readonly IGenerellemIngestion ingestion;
 
-    readonly Queue<ChatMessage> chatHistory = new();
+    readonly Queue<ChatRequestUserMessage> chatHistory = new();
     readonly List<IDocumentSource> docSources = [];
 
     readonly ReadOnlyMemory<float> embedding;
