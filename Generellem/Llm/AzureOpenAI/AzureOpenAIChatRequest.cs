@@ -7,8 +7,6 @@ namespace Generellem.Llm.AzureOpenAI;
 
 public class AzureOpenAIChatRequest : IChatRequest
 {
-    public Queue<ChatRequestUserMessage> ChatHistory { get; set; } = new();
-
     public ChatCompletionsOptions Options { get; set; } = new();
 
     public QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse> SummarizedUserIntent { get; set; } = new();
@@ -29,4 +27,13 @@ public class AzureOpenAIChatRequest : IChatRequest
                 Options!.Messages[0] = new ChatRequestSystemMessage(value);
         }
     }
+
+    public static string GetRequestContent(ChatRequestMessage chatMessage) =>
+        chatMessage switch
+        {
+            ChatRequestUserMessage userMessage => userMessage.Content,
+            ChatRequestAssistantMessage assistantMessage => assistantMessage.Content,
+            _ => string.Empty
+        };
+
 }

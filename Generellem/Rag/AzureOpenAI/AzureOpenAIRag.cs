@@ -71,13 +71,10 @@ public class AzureOpenAIRag(
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Full request that can be sent to the LLM.</returns>
-    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestUserMessage> chatHistory, CancellationToken cancelToken)
+    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new()
     {
-        AzureOpenAIChatRequest request = new()
-        {
-            ChatHistory = chatHistory
-        };
+        AzureOpenAIChatRequest request = new();
 
         string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
@@ -91,11 +88,9 @@ public class AzureOpenAIRag(
 
         List<ChatRequestMessage> messages =
         [
-            new ChatRequestSystemMessage(SystemMessage + context),
+            new ChatRequestSystemMessage(SystemMessage + "\n" + context),
             userQuery
         ];
-
-        ManageChatHistory(chatHistory, userQuery);
 
         request.Options =
             new ChatCompletionsOptions(deploymentName, messages)
@@ -122,21 +117,6 @@ public class AzureOpenAIRag(
     }
 
     /// <summary>
-    /// Ensures the latest queries reside in chat history and that chat history doesn't exceed a specified window size.
-    /// </summary>
-    /// <param name="chatHistory"><see cref="Queue{T}"/> of <see cref="ChatMessage"/>, representing the current chat history.</param>
-    /// <param name="userQuery"><see cref="ChatMessage"/> with the most recent user query to add to history.</param>
-    protected virtual void ManageChatHistory(Queue<ChatRequestUserMessage> chatHistory, ChatRequestUserMessage userQuery)
-    {
-        const int ChatHistorySize = 5;
-
-        while (chatHistory.Count >= ChatHistorySize)
-            chatHistory.Dequeue();
-
-        chatHistory.Enqueue(userQuery);
-    }
-
-    /// <summary>
     /// Asks the LLM to clarify what the user wants to accomplish based on current query and chat history.
     /// </summary>
     /// <param name="userQuery">The question that the user is asking.</param>
@@ -145,12 +125,12 @@ public class AzureOpenAIRag(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns><see cref="QueryDetails{TRequest, TResponse}"/> including clarification of user query, based on context.</returns>
     protected virtual async Task<QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse>> SummarizeUserIntentAsync(
-        string userQuery, Queue<ChatRequestUserMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+        string userQuery, Queue<ChatRequestMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
     {
         StringBuilder sb = new();
 
-        foreach (ChatRequestUserMessage chatMessage in chatHistory)
-            sb.AppendLine($"{chatMessage.Role}: {chatMessage.Content}\n");
+        foreach (ChatRequestMessage chatMessage in chatHistory)
+            sb.AppendLine($"{chatMessage.Role}: {AzureOpenAIChatRequest.GetRequestContent(chatMessage)}\n");
 
         List<ChatRequestSystemMessage> messages =
         [
