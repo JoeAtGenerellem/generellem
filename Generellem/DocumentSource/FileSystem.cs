@@ -12,6 +12,8 @@ namespace Generellem.DocumentSource;
 /// </summary>
 public class FileSystem : IDocumentSource, IFileSystem
 {
+    readonly string appPath = string.Empty;
+
     /// <summary>
     /// Describes the document source.
     /// </summary>
@@ -21,6 +23,11 @@ public class FileSystem : IDocumentSource, IFileSystem
 
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
     readonly string[] ExcludedPaths = ["\\bin", "\\obj", ".git", ".vs"];
+
+    public FileSystem()
+    {
+        this.appPath = Path.GetDirectoryName(Environment.ProcessPath)!;
+    }
 
     /// <summary>
     /// Based on the config file, scan files.
@@ -80,6 +87,8 @@ public class FileSystem : IDocumentSource, IFileSystem
     /// <returns>Enumerable of <see cref="FileSpec"/>.</returns>
     public virtual async Task<IEnumerable<FileSpec>> GetPathsAsync(string configPath = nameof(FileSystem) + ".json")
     {
+        configPath = Path.Combine(appPath, configPath);
+
         if (!File.Exists(configPath))
             using (FileStream specWriter = File.OpenWrite(configPath))
                 await specWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.Default.GetBytes("[]")));
@@ -98,6 +107,8 @@ public class FileSystem : IDocumentSource, IFileSystem
     /// <param name="configPath">Location of the config file.</param>
     public virtual async ValueTask WritePathsAsync(IEnumerable<FileSpec> fileSpecs, string configPath = nameof(FileSystem) + ".json")
     {
+        configPath = Path.Combine(appPath, configPath);
+        
         File.Delete(configPath);
 
         using FileStream specWriter = File.OpenWrite(configPath);

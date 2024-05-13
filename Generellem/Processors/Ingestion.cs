@@ -197,8 +197,8 @@ public class Ingestion(
 
         List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSource, cancellationToken);
 
-        List<string> chunkIdsToDelete = new();
-        List<string> chunkDocumentReferencesToDelete = new();
+        List<string> chunkIdsToDelete = [];
+        List<string> chunkDocumentReferencesToDelete = [];
 
         foreach (TextChunk chunk in chunks)
         {

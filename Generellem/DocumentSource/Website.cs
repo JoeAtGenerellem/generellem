@@ -16,10 +16,10 @@ namespace Generellem.DocumentSource;
 /// <summary>
 /// Manages ingestion of a website
 /// </summary>
-public class Website(
-    IHttpClientFactory httpFact, ILogger<Website> logger)
-    : IDocumentSource, IWebsite
+public class Website : IDocumentSource, IWebsite
 {
+    readonly string appPath = string.Empty;
+
     /// <summary>
     /// Describes the document source.
     /// </summary>
@@ -27,8 +27,15 @@ public class Website(
 
     public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(Website)}";
 
-    readonly HttpClient httpClient = httpFact.Create();
-    readonly ILogger<Website> logger = logger;
+    readonly HttpClient httpClient;
+    readonly ILogger<Website> logger;
+
+    public Website(IHttpClientFactory httpFact, ILogger<Website> logger)
+    {
+        this.appPath = Path.GetDirectoryName(Environment.ProcessPath)!;
+        this.httpClient = httpFact.Create();
+        this.logger = logger;
+    }
 
     /// <summary>
     /// Iteratively visits the page of each website for caller processing
@@ -52,6 +59,8 @@ public class Website(
 
     public virtual async Task<IEnumerable<WebSpec>> GetWebsitesAsync(string configPath = nameof(Website) + ".json")
     {
+        configPath = Path.Combine(appPath, configPath);
+
         if (!File.Exists(configPath))
             using (FileStream specWriter = File.OpenWrite(configPath))
                 await specWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.Default.GetBytes("[]")));
@@ -70,6 +79,8 @@ public class Website(
     /// <param name="configPath">Location of the config file.</param>
     public virtual async ValueTask WriteSitesAsync(IEnumerable<WebSpec> webSpecs, string configPath = nameof(Website) + ".json")
     {
+        configPath = Path.Combine(appPath, configPath);
+
         File.Delete(configPath);
 
         using FileStream specWriter = File.OpenWrite(configPath);
