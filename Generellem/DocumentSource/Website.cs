@@ -18,8 +18,6 @@ namespace Generellem.DocumentSource;
 /// </summary>
 public class Website : IDocumentSource, IWebsite
 {
-    readonly string appPath = string.Empty;
-
     /// <summary>
     /// Describes the document source.
     /// </summary>
@@ -32,7 +30,6 @@ public class Website : IDocumentSource, IWebsite
 
     public Website(IHttpClientFactory httpFact, ILogger<Website> logger)
     {
-        this.appPath = Path.GetDirectoryName(Environment.ProcessPath)!;
         this.httpClient = httpFact.Create();
         this.logger = logger;
     }
@@ -59,7 +56,7 @@ public class Website : IDocumentSource, IWebsite
 
     public virtual async Task<IEnumerable<WebSpec>> GetWebsitesAsync(string configPath = nameof(Website) + ".json")
     {
-        configPath = Path.Combine(appPath, configPath);
+        configPath = GenerellemFiles.GetAppDataPath(configPath);
 
         if (!File.Exists(configPath))
             using (FileStream specWriter = File.OpenWrite(configPath))
@@ -79,7 +76,7 @@ public class Website : IDocumentSource, IWebsite
     /// <param name="configPath">Location of the config file.</param>
     public virtual async ValueTask WriteSitesAsync(IEnumerable<WebSpec> webSpecs, string configPath = nameof(Website) + ".json")
     {
-        configPath = Path.Combine(appPath, configPath);
+        configPath = GenerellemFiles.GetAppDataPath(configPath);
 
         File.Delete(configPath);
 

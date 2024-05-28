@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Generellem.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Generellem.Repository;
 
@@ -8,6 +9,7 @@ public class GenerellemContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite("Data Source=generellem.db;Default Timeout=5");
+        string dbPath = GenerellemFiles.GetAppDataPath("generellem.db");
+        optionsBuilder.UseSqlite($"Data Source={dbPath};Default Timeout=5");
     }
 }
