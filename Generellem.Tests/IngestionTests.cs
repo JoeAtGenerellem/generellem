@@ -94,7 +94,7 @@ public class IngestionTests
             .ReturnsAsync(chunks);
 
         embedMock
-            .Setup(embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<IProgress<IngestionProgress>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
         configMock
@@ -271,7 +271,7 @@ public class IngestionTests
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         embedMock.Verify(
-            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None), 
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<IProgress<IngestionProgress>>(), CancellationToken.None), 
             Times.Once());
     }
 
@@ -289,7 +289,7 @@ public class IngestionTests
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         embedMock.Verify(
-            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<Progress<IngestionProgress>>(), CancellationToken.None),
             Times.Never);
     }
 
@@ -343,7 +343,7 @@ public class IngestionTests
             docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
             Times.Never);
         embedMock.Verify(
-            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), CancellationToken.None),
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<Progress<IngestionProgress>>(), CancellationToken.None),
             Times.Never);
     }
     [Fact]

@@ -55,7 +55,7 @@ public class AzureOpenAIRag(
 
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
-    readonly ResiliencePipeline pipeline = 
+    public ResiliencePipeline Pipeline { get; set; } = 
         new ResiliencePipelineBuilder()
             .AddRetry(new()
              {
@@ -164,13 +164,13 @@ public class AzureOpenAIRag(
 
         try
         {
-            Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+            Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
             async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
                 cancellationToken);
 
             ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
 
-            List<TextChunk> chunks = await pipeline.ExecuteAsync(
+            List<TextChunk> chunks = await Pipeline.ExecuteAsync(
                 async token => await azSearchSvc.SearchAsync<TextChunk>(embedding, token),
                 cancellationToken);
 

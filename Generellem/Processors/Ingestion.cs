@@ -101,7 +101,7 @@ public class Ingestion(
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
-                List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, cancelToken);
+                List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, progress, cancelToken);
                 await IndexAsync(chunks, cancelToken);
 
                 if (cancelToken.IsCancellationRequested)
@@ -111,6 +111,7 @@ public class Ingestion(
             await RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
 
             progress.Report(new($"Completed the {docSource.Description} Document Source"));
+            progress.Report(new($""));
         }
 
         progress.Report(new($"Ingestion is complete. Total documents processed for this job: {count}"));
