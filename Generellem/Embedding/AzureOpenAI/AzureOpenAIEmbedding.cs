@@ -24,7 +24,7 @@ public class AzureOpenAIEmbedding(
 
     readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
 
-    readonly ResiliencePipeline pipeline =
+    public ResiliencePipeline Pipeline { get; set; } =
         new ResiliencePipelineBuilder()
             .AddRetry(new()
             {
@@ -71,7 +71,7 @@ public class AzureOpenAIEmbedding(
             try
             {
                 EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(chunk.Content);
-                Response<Embeddings> embeddings = await pipeline.ExecuteAsync<Response<Embeddings>>(
+                Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
                     async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
                     cancellationToken);
 

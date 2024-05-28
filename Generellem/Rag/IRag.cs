@@ -3,6 +3,8 @@
 using Generellem.Embedding;
 using Generellem.Llm;
 
+using Polly;
+
 namespace Generellem.Rag;
 
 /// <summary>
@@ -28,6 +30,7 @@ public interface IRag
     /// Mistrial range is 0 to 1
     /// </remarks>
     float Temperature { get; set; }
+    ResiliencePipeline Pipeline { get; set; }
 
     /// <summary>
     /// Builds a request based on prompt content.
