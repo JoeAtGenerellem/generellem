@@ -83,7 +83,7 @@ internal class GenerellemHostedService(
 
         string? userInput;
 
-        Queue<ChatRequestUserMessage> chatHistory = new();
+        Queue<ChatRequestMessage> chatHistory = new();
 
         do
         {

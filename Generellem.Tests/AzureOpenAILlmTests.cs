@@ -5,6 +5,7 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Services;
 
 using Microsoft.Extensions.Logging;
+using Polly;
 
 namespace Generellem.Llm.Tests;
 
@@ -69,11 +70,11 @@ public class AzureOpenAILlmTests
     [Fact]
     public async Task PromptAsync_WithRequestFailedExceptionOnGetChatCompletions_LogsAnError()
     {
+        llm.Pipeline = new ResiliencePipelineBuilder().Build();
         AzureOpenAIChatRequest request = new()
         {
             Options = new ChatCompletionsOptions("mydeployment", [new ChatRequestUserMessage("Some Content")])
         };
-
         openAIClientMock
             .Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));

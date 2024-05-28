@@ -151,8 +151,13 @@ public class Website : IDocumentSource, IWebsite
         var doc = new HtmlDocument();
         doc.LoadHtml(htmlDocument);
 
+        HtmlNodeCollection? nodes = doc.DocumentNode.SelectNodes("//a[@href]");
+
+        if (nodes == null)
+            return new List<string>();
+
         List<string> links =
-            (from node in doc.DocumentNode.SelectNodes("//a[@href]")
+            (from node in nodes
              let href = node.GetAttributeValue("href", null)
              where href != null && href.StartsWith(baseUrl)
              select href)

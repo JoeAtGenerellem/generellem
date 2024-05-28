@@ -10,6 +10,7 @@ using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
+using Polly;
 
 namespace Generellem.Rag.Tests;
 
@@ -106,42 +107,16 @@ public class AzureOpenAIRagTests
             .Returns("generellem");
 
         AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Hello", new Queue<ChatRequestUserMessage>(), CancellationToken.None);
+            "Hello", new Queue<ChatRequestMessage>(), CancellationToken.None);
 
         Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
         Assert.Contains(searchResults[1]?.Content ?? "", request.Text);
     }
 
     [Fact]
-    public async Task BuildRequestAsync_PopulatesChatHistory()
-    {
-        Queue<ChatRequestUserMessage> chatHistory = new();
-        const string ExpectedQuery = "What is Generellem?";
-        var searchResults = new List<TextChunk>
-        {
-            new() { Content = "result1" },
-            new() { Content = "result2" }
-        };
-        azSearchSvcMock
-            .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(searchResults);
-        configMock
-            .Setup(config => config[GKeys.AzOpenAIDeploymentName])
-            .Returns("generellem");
-
-        AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "What is Generellem?", chatHistory, CancellationToken.None);
-
-        Assert.Single(chatHistory);
-        ChatRequestUserMessage chatMessage = chatHistory.Peek();
-        Assert.Equal(ChatRole.User, chatMessage.Role);
-        Assert.Equal(ExpectedQuery, chatMessage.Content);
-    }
-
-    [Fact]
     public async Task AskAsync_WithNullDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatRequestUserMessage> chatHistory = new();
+        Queue<ChatRequestMessage> chatHistory = new();
         configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -152,7 +127,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task AskAsync_WithEmptyDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatRequestUserMessage> chatHistory = new();
+        Queue<ChatRequestMessage> chatHistory = new();
         configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -193,6 +168,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
     {
+        azureOpenAIRag.Pipeline = new ResiliencePipelineBuilder().Build();
         openAIClientMock
             .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
@@ -214,6 +190,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
     {
+        azureOpenAIRag.Pipeline = new ResiliencePipelineBuilder().Build();
         azSearchSvcMock
             .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));

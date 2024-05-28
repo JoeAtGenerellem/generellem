@@ -5,11 +5,13 @@ using Generellem.Document.DocumentTypes;
 using Generellem.Embedding;
 using Generellem.Embedding.AzureOpenAI;
 using Generellem.Llm;
+using Generellem.Processors;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
-
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
+using Polly;
 
 namespace Generellem.Rag.Tests;
 
@@ -19,13 +21,11 @@ public class AzureOpenAIEmbedTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILogger<AzureOpenAIEmbedding>> logMock = new();
-    readonly Mock<OpenAIClient> openAIClientMock = new();
+    readonly Mock<IProgress<IngestionProgress>> progMock = new();
+    readonly Mock<OpenAIClient> openAiClientMock = new();
     readonly Mock<Response<Embeddings>> embeddingsMock = new();
 
-    readonly Mock<LlmClientFactory> llmClientFactMock;
-
-    readonly IEmbedding azureOpenAIEmbedding;
-    readonly ReadOnlyMemory<float> embedding;
+    readonly IEmbedding azureOpenAiEmbedding;
 
     public AzureOpenAIEmbedTests()
     {
@@ -42,21 +42,21 @@ public class AzureOpenAIEmbedTests
         configMock
             .Setup(config => config[GKeys.AzOpenAIApiKey])
             .Returns("generellem-key");
-        llmClientFactMock = new(configMock.Object);
+        Mock<LlmClientFactory> llmClientFactMock = new(configMock.Object);
 
-        embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
+        var embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
         List<EmbeddingItem> embeddingItems =
         [
             AzureOpenAIModelFactory.EmbeddingItem(embedding)
         ];
         Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
 
-        openAIClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+        openAiClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(embeddingsMock.Object);
 
         embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
 
-        llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+        llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAiClientMock.Object);
 
         List<TextChunk> chunks =
         [
@@ -83,7 +83,7 @@ public class AzureOpenAIEmbedTests
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAIEmbedding = new AzureOpenAIEmbedding(
+        azureOpenAiEmbedding = new AzureOpenAIEmbedding(
             configMock.Object, llmClientFactMock.Object, logMock.Object);
     }
 
@@ -93,9 +93,9 @@ public class AzureOpenAIEmbedTests
         TextProcessor.ChunkSize = 5000;
         TextProcessor.Overlap = 100;
 
-        await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+        await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAIClientMock.Verify(
+        openAiClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce());
     }
@@ -108,9 +108,9 @@ public class AzureOpenAIEmbedTests
         TextProcessor.ChunkSize = 9;
         TextProcessor.Overlap = 0;
 
-        await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+        await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAIClientMock.Verify(
+        openAiClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
         TextProcessor.ChunkSize = oldChunSize;
@@ -125,9 +125,9 @@ public class AzureOpenAIEmbedTests
         TextProcessor.ChunkSize = 9;
         TextProcessor.Overlap = 2;
 
-        await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+        await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAIClientMock.Verify(
+        openAiClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(3));
         TextProcessor.ChunkSize = oldChunSize;
@@ -142,12 +142,12 @@ public class AzureOpenAIEmbedTests
         TextProcessor.ChunkSize = 11;
         TextProcessor.Overlap = 3;
 
-        await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+        await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAIClientMock.Verify(
+        openAiClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.Is<EmbeddingsOptions>(eo => eo.Input[0] == "Test docume"), It.IsAny<CancellationToken>()),
             Times.Once);
-        openAIClientMock.Verify(
+        openAiClientMock.Verify(
             client => client.GetEmbeddingsAsync(It.Is<EmbeddingsOptions>(eo => eo.Input[0] == "ument text"), It.IsAny<CancellationToken>()),
             Times.Once);
         TextProcessor.ChunkSize = oldChunSize;
@@ -167,7 +167,7 @@ public class AzureOpenAIEmbedTests
             .Setup(doc => doc.GetTextAsync(It.IsAny<Stream>(), It.IsAny<string>()))
             .ReturnsAsync("Test document text");
 
-        List<TextChunk> textChunks = await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None);
+        List<TextChunk> textChunks = await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
         TextChunk actualChunk = textChunks.First();
         Assert.Equal(expectedChunk.Content, actualChunk.Content);
@@ -182,12 +182,13 @@ public class AzureOpenAIEmbedTests
     [Fact]
     public async Task EmbedAsync_WithRequestFailedException_LogsAnError()
     {
-        openAIClientMock
+        azureOpenAiEmbedding.Pipeline = new ResiliencePipelineBuilder().Build();
+        openAiClientMock
             .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>
-            await azureOpenAIEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", CancellationToken.None));
+            await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None));
 
         logMock
             .Verify(
@@ -199,5 +200,4 @@ public class AzureOpenAIEmbedTests
                     (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
                 Times.Once);
     }
-
 }
