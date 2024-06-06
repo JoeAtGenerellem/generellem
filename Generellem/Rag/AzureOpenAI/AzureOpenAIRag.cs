@@ -53,8 +53,6 @@ public class AzureOpenAIRag(
     /// </summary>
     public float Temperature { get; set; } = 0;
 
-    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
-
     public ResiliencePipeline Pipeline { get; set; } = 
         new ResiliencePipelineBuilder()
             .AddRetry(new()
@@ -164,8 +162,10 @@ public class AzureOpenAIRag(
 
         try
         {
+            OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
+
             Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
-            async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
+            async token => await openAiClient.GetEmbeddingsAsync(embeddingsOptions, token),
                 cancellationToken);
 
             ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
