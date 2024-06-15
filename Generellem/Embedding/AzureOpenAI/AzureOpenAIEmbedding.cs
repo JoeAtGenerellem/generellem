@@ -22,8 +22,6 @@ public class AzureOpenAIEmbedding(
 {
     static IProgress<IngestionProgress>? currentProgress = null;
 
-    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
-
     public ResiliencePipeline Pipeline { get; set; } =
         new ResiliencePipelineBuilder()
             .AddRetry(new()
@@ -70,9 +68,11 @@ public class AzureOpenAIEmbedding(
 
             try
             {
+                OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
+
                 EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(chunk.Content);
                 Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
-                    async token => await openAIClient.GetEmbeddingsAsync(embeddingsOptions, token),
+                    async token => await openAiClient.GetEmbeddingsAsync(embeddingsOptions, token),
                     cancellationToken);
 
                 chunk.Embedding = embeddings.Value.Data[0].Embedding;

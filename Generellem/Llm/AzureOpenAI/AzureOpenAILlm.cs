@@ -14,8 +14,6 @@ public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAIL
 {
     readonly ILogger<AzureOpenAILlm> logger = logger;
 
-    readonly OpenAIClient openAIClient = llmClientFact.CreateOpenAIClient();
-
     public ResiliencePipeline Pipeline { get; set; } = 
         new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions())
@@ -30,8 +28,10 @@ public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAIL
 
         try
         {
+            OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
+
             ChatCompletions chatCompletionsResponse = await Pipeline.ExecuteAsync<ChatCompletions>(
-                async token => await openAIClient.GetChatCompletionsAsync(completionsOptions, token),
+                async token => await openAiClient.GetChatCompletionsAsync(completionsOptions, token),
                 cancellationToken);
 
             IChatResponse chatResponse = new AzureOpenAIChatResponse(chatCompletionsResponse);
