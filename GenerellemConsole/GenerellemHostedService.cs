@@ -1,5 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 
+using Generellem.DocumentSource;
 using Generellem.Processors;
 using Generellem.Services;
 
@@ -12,6 +13,7 @@ namespace GenerellemConsole;
 /// Starts and runs the main application as a .NET Hosted Service.
 /// </summary>
 internal class GenerellemHostedService(
+    IDocumentSourceFactory docSourceFact,
     IGenerellemIngestion generellemIngestion,
     IGenerellemQuery generellemQuery, 
     IHostApplicationLifetime lifetime,
@@ -36,6 +38,8 @@ internal class GenerellemHostedService(
 
                     logger.LogInformation(message);
                 });
+
+            CopyDocumentSources();
 
             // Normally, this would run in a separate service that
             // runs on a periodic timer to grab the latest files.
@@ -140,5 +144,31 @@ Let's get started!
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Copies document source configuration files to AppData.
+    /// </summary>
+    /// <remarks>
+    /// Ingestion reads Document source files, like FileSystem.json and Website.json
+    /// from the user's AppData folder. This is Microsoft's recommended practice for
+    /// managing artifacts that support an app. It's also useful because installing
+    /// an app update doesn't delete those files.
+    /// </remarks>
+    void CopyDocumentSources()
+    {
+        IEnumerable<IDocumentSource> docSources = docSourceFact.GetDocumentSources();
+
+        string appDataPath = GenerellemFiles.GetAppDataPath();
+
+        Directory.CreateDirectory(appDataPath);
+
+        foreach (IDocumentSource docSource in docSources)
+        {
+            string configFileName = $"{docSource.GetType().Name}.json";
+            
+            if (File.Exists(configFileName))
+                File.Copy(configFileName, Path.Combine(appDataPath, configFileName), overwrite: true);
+        }
     }
 }
