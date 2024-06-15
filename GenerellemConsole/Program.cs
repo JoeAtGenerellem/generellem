@@ -21,6 +21,9 @@ CancellationTokenSource tokenSource = new();
 
 IHost host = InitializeConfiguration(args);
 
+// config file location for this demo only
+GenerellemFiles.SubFolder = "ConsoleDemo";
+
 ConfigureDB();
 
 await host.RunAsync(tokenSource.Token);
