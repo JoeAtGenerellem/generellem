@@ -36,12 +36,6 @@ public class PdfTests
     }
 
     [Fact]
-    public async Task GetTextAsync_WithFileNotFound_ThrowsException()
-    {
-        await Assert.ThrowsAsync<FileNotFoundException>(() => pdf.GetTextAsync(streamMock.Object, "invalid.pdf"));
-    }
-
-    [Fact]
     public void CanProcess_IsTrue()
     {
         Assert.True(pdf.CanProcess);

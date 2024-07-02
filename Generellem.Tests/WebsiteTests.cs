@@ -10,15 +10,33 @@ namespace Generellem.DocumentSource.Tests;
 
 public class WebsiteTests
 {
-    readonly Mock<IHttpClientFactory> httpClientFactMock = new();
-    readonly Mock<ILogger<Website>> loggerMock = new();
     readonly Mock<HttpClient> httpClientMock = new();
     readonly Mock<HttpMessageHandler> httpMsgHandlerMock = new();
 
+    readonly Mock<IHttpClientFactory> httpClientFactMock = new();
+    readonly Mock<ILogger<Website>> loggerMock = new();
+    readonly Mock<IPathProvider> pathProviderMock = new();
+    readonly Mock<IPathProviderFactory> pathProviderFactMock = new();
+
     public WebsiteTests()
     {
+        IEnumerable<PathSpec> pathSpecs =
+            new List<PathSpec> 
+            { 
+                new PathSpec { Description = "Test", Path = "http://localhost" } 
+            
+            };
         httpClientMock = new Mock<HttpClient>(httpMsgHandlerMock.Object);
-        httpClientFactMock.Setup(fact => fact.Create()).Returns(httpClientMock.Object);
+
+        httpClientFactMock
+            .Setup(fact => fact.Create())
+            .Returns(httpClientMock.Object);
+        pathProviderMock
+            .Setup(prov => prov.GetPathsAsync(It.IsAny<string>()))
+            .ReturnsAsync(pathSpecs);
+        pathProviderFactMock
+            .Setup(fact => fact.Create(It.IsAny<IDocumentSource>()))
+            .Returns(pathProviderMock.Object);
     }
 
     [Fact]
@@ -26,7 +44,7 @@ public class WebsiteTests
     {
         const string html = "<html><body><a href='page1'>Page 1</a><a href='page2'>Page 2</a></body></html>";
 
-        var website = new Website(httpClientFactMock.Object, loggerMock.Object);
+        Website website = new(httpClientFactMock.Object, loggerMock.Object, pathProviderFactMock.Object);
         httpMsgHandlerMock
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -45,7 +63,7 @@ public class WebsiteTests
     [Fact]
     public async Task GetDocumentsAsync_WithInvalidUrl_ReturnsEmpty()
     {
-        Website website = new(httpClientFactMock.Object, loggerMock.Object);
+        Website website = new(httpClientFactMock.Object, loggerMock.Object, pathProviderFactMock.Object);
         httpMsgHandlerMock
             .Protected()
             .Setup<Task<HttpResponseMessage>>(

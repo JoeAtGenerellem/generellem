@@ -3,13 +3,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Generellem.Repository;
 
-public class GenerellemContext : DbContext
+public class GenerellemContext(IGenerellemFiles gemFiles) : DbContext
 {
     public DbSet<DocumentHash> DocumentHashes { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        string dbPath = GenerellemFiles.GetAppDataPath("generellem.db");
+        string dbPath = gemFiles.GetAppDataPath("generellem.db");
         optionsBuilder.UseSqlite($"Data Source={dbPath};Default Timeout=5");
     }
 }

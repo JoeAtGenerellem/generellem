@@ -6,23 +6,30 @@ public class GKeys
     // Azure Blob Service
     //
 
-    public static string AzBlobConnectionString { get; set; } = "GenerellemAzBlobConnectionString";
-    public static string AzBlobContainer { get; set; } = "GenerellemAzBlobContainer";
+    public const string AzBlobConnectionString = "GenerellemAzBlobConnectionString";
+    public const string AzBlobContainer = "GenerellemAzBlobContainer";
 
     //
     // Azure OpenAI
     //
 
-    public static string AzOpenAIApiKey { get; set; } = "GenerellemAzOpenAIApiKey";
-    public static string AzOpenAIDeploymentName { get; set; } = "GenerellemAzOpenAIDeploymentName";
-    public static string AzOpenAIEmbeddingName { get; set; } = "GenerellemAzOpenAIEmbeddingName";
-    public static string AzOpenAIEndpointName { get; set; } = "GenerellemAzOpenAIEndpointName";
+    public const string AzOpenAIApiKey = "GenerellemAzOpenAIApiKey";
+    public const string AzOpenAIDeploymentName = "GenerellemAzOpenAIDeploymentName";
+    public const string AzOpenAIEmbeddingName = "GenerellemAzOpenAIEmbeddingName";
+    public const string AzOpenAIEndpointName = "GenerellemAzOpenAIEndpointName";
 
     //
     // Azure Cognitive Search
     //
 
-    public static string AzSearchServiceAdminApiKey { get; set; } = "GenerellemAzSearchServiceAdminApiKey";
-    public static string AzSearchServiceEndpoint { get; set; } = "GenerellemAzSearchServiceEndpoint";
-    public static string AzSearchServiceIndex { get; set; } = "GenerellemAzSearchServiceIndex";
+    public const string AzSearchServiceAdminApiKey = "GenerellemAzSearchServiceAdminApiKey";
+    public const string AzSearchServiceEndpoint = "GenerellemAzSearchServiceEndpoint";
+    public const string AzSearchServiceIndex = "GenerellemAzSearchServiceIndex";
+
+    //
+    // MS Graph
+    //
+    public const string MSGraphClientID = "MSGraphClientID";
+    public const string MSGraphClientSecret = "MSGraphClientSecret";
+    public const string OneDriveUserName = "OneDriveUserName";
 }

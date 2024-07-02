@@ -142,6 +142,9 @@ _TeamCity*
 .axoCover/*
 !.axoCover/settings.json
 
+# JetBrains Rider
+.idea/*
+
 # Coverlet is a free, cross platform Code Coverage Tool
 coverage*.json
 coverage*.xml

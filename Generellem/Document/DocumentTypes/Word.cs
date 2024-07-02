@@ -1,7 +1,8 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using NPOI.HWPF.Extractor;
+
 using NPOI.HWPF;
+using NPOI.HWPF.Extractor;
 
 namespace Generellem.Document.DocumentTypes;
 
@@ -17,27 +18,25 @@ public class Word : IDocumentType
 
         string text = extension.ToLower() switch
         {
-            ".docx" => ReadDocx(filePath),
-            ".doc" => ReadDoc(filePath),
+            ".docx" => ReadDocx(documentStream),
+            ".doc" => ReadDoc(documentStream),
             _ => throw new ArgumentException("Unsupported file format"),
         };
 
         return await Task.FromResult(text);
     }
 
-    private static string ReadDoc(string filePath)
+    private static string ReadDoc(Stream fileStream)
     {
-        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
-
         HWPFDocument doc = new(fileStream);
         WordExtractor wordExtractor = new(doc);
 
         return string.Join(Environment.NewLine, wordExtractor.ParagraphText);
     }
 
-    protected virtual string ReadDocx(string filePath)
+    protected virtual string ReadDocx(Stream fileStream)
     {
-        using WordprocessingDocument doc = WordprocessingDocument.Open(filePath, false);
+        using WordprocessingDocument doc = WordprocessingDocument.Open(fileStream, false);
 
         var body = doc?.MainDocumentPart?.Document?.Body;
         var paragraphs = body?.Elements<Paragraph>();
