@@ -7,7 +7,7 @@ using Generellem.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace GenerellemConsole;
+namespace MSGraphDemo;
 
 /// <summary>
 /// Starts and runs the main application as a .NET Hosted Service.

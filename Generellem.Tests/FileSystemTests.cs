@@ -1,30 +1,30 @@
-﻿namespace Generellem.DocumentSource.Tests;
+﻿using Generellem.Services;
+
+namespace Generellem.DocumentSource.Tests;
 
 public class FileSystemTests
 {
+    readonly Mock<IPathProvider> pathProviderMock = new();
+    readonly Mock<IPathProviderFactory> pathProviderFactoryMock = new();
+
+    public FileSystemTests()
+    {
+        pathProviderFactoryMock
+            .Setup(fact => fact.Create(It.IsAny<IDocumentSource>()))
+            .Returns(pathProviderMock.Object);
+    }
+
     [Fact]
     public async Task GetFiles_ReturnsFiles()
     {
-        FileSpec fileSpec = new() { Path = "C:\\Project" };
-        var mockGetPaths = new Mock<FileSystem>();
-        mockGetPaths.Setup(fs => fs.GetPathsAsync(It.IsAny<string>()))
-                    .ReturnsAsync(new[] { fileSpec });
+        PathSpec fileSpec = new() { Path = "." };
+        pathProviderMock
+            .Setup(fs => fs.GetPathsAsync(It.IsAny<string>()))
+            .ReturnsAsync(new[] { fileSpec });
 
-        var fileSystem = new FileSystem();
+        var fileSystem = new FileSystem(pathProviderFactoryMock.Object);
 
         await foreach (DocumentInfo docInfo in fileSystem.GetDocumentsAsync(CancellationToken.None))
             Assert.NotEmpty(docInfo.DocumentReference);
-    }
-
-    [Theory]
-    [InlineData("\\bin")]
-    [InlineData("\\obj")]
-    public void IsPathExcluded_DetectsExcludedPaths(string path)
-    {
-        var fileSystem = new FileSystem();
-
-        var result = fileSystem.IsPathExcluded(path);
-
-        Assert.True(result);
     }
 }

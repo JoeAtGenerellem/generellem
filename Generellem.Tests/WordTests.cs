@@ -23,7 +23,10 @@ public class WordTests
     [Fact]
     public async Task GetTextAsync_Docx_ReturnsText()
     {
-        var result = await word.GetTextAsync(streamMock.Object, "TestDocs/WordDoc1.docx");
+        const string docFile = "TestDocs/WordDoc1.docx";
+        using FileStream stream = File.Open(docFile, FileMode.Open, FileAccess.Read);
+
+        var result = await word.GetTextAsync(stream, docFile);
 
         Assert.Equal(DocXFileContents, result);
     }
@@ -31,7 +34,10 @@ public class WordTests
     [Fact]
     public async Task GetTextAsync_Doc_ReturnsText()
     {
-        var result = await word.GetTextAsync(streamMock.Object, "TestDocs/WordDoc2.doc");
+        const string docFile = "TestDocs/WordDoc2.doc";
+        using FileStream stream = File.Open(docFile, FileMode.Open, FileAccess.Read);
+
+        var result = await word.GetTextAsync(stream, docFile);
 
         Assert.Equal(DocFileContents, result);
     }

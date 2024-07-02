@@ -1,13 +1,12 @@
-﻿using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
-
-using Generellem.Document.DocumentTypes;
+﻿using Generellem.Document.DocumentTypes;
 using Generellem.Services;
 
 using HtmlAgilityPack;
 
 using Microsoft.Extensions.Logging;
+
+using System.Runtime.CompilerServices;
+using System.Text;
 
 using IHttpClientFactory = Generellem.Services.IHttpClientFactory;
 
@@ -16,22 +15,24 @@ namespace Generellem.DocumentSource;
 /// <summary>
 /// Manages ingestion of a website
 /// </summary>
-public class Website : IDocumentSource, IWebsite
+public class Website : IDocumentSource
 {
     /// <summary>
     /// Describes the document source.
     /// </summary>
     public string Description { get; set; } = "Web Site";
 
-    public string Prefix { get; init; } = $"{Environment.MachineName}:{nameof(Website)}";
+    public string Prefix { get; set; } = $"{Environment.MachineName}:{nameof(Website)}";
 
     readonly HttpClient httpClient;
     readonly ILogger<Website> logger;
+    readonly IPathProvider pathProvider;
 
-    public Website(IHttpClientFactory httpFact, ILogger<Website> logger)
+    public Website(IHttpClientFactory httpFact, ILogger<Website> logger, IPathProviderFactory pathProviderFact)
     {
         this.httpClient = httpFact.Create();
         this.logger = logger;
+        this.pathProvider = pathProviderFact.Create(this);
     }
 
     /// <summary>
@@ -41,52 +42,17 @@ public class Website : IDocumentSource, IWebsite
     /// <returns>foreachable sequence of <see cref="DocumentInfo"/></returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
-        IEnumerable<WebSpec> websites = await GetWebsitesAsync();
+        IEnumerable<PathSpec> websites = await pathProvider.GetPathsAsync($"{nameof(Website)}.json");
 
-        foreach (WebSpec spec in websites)
+        foreach (PathSpec spec in websites)
         {
-            if (spec?.Url is null) continue;
+            if (spec?.Path is null) continue;
 
             string specDescription = spec.Description ?? string.Empty;
 
-            await foreach (DocumentInfo page in GetPagesAsync(spec.Url, specDescription, cancelToken))
+            await foreach (DocumentInfo page in GetPagesAsync(spec.Path, specDescription, cancelToken))
                 yield return page;
         }
-    }
-
-    public virtual async Task<IEnumerable<WebSpec>> GetWebsitesAsync(string configPath = nameof(Website) + ".json")
-    {
-        configPath = GenerellemFiles.GetAppDataPath(configPath);
-
-        if (!File.Exists(configPath))
-            using (FileStream specWriter = File.OpenWrite(configPath))
-                await specWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.Default.GetBytes("[]")));
-
-        using var specReader = File.OpenRead(configPath);
-
-        IEnumerable<WebSpec>? webSpecs = await JsonSerializer.DeserializeAsync<IEnumerable<WebSpec>>(specReader);
-
-        return webSpecs ?? new List<WebSpec>();
-    }
-
-    /// <summary>
-    /// Writes web URLs to the config file.
-    /// </summary>
-    /// <param name="webSpecs">Enumerable of <see cref="WebSpec"/>.</param>
-    /// <param name="configPath">Location of the config file.</param>
-    public virtual async ValueTask WriteSitesAsync(IEnumerable<WebSpec> webSpecs, string configPath = nameof(Website) + ".json")
-    {
-        configPath = GenerellemFiles.GetAppDataPath(configPath);
-
-        File.Delete(configPath);
-
-        using FileStream specWriter = File.OpenWrite(configPath);
-
-        string specJson = JsonSerializer.Serialize(webSpecs, new JsonSerializerOptions() { WriteIndented = true });
-        byte[] specBytes = Encoding.Default.GetBytes(specJson);
-        ReadOnlyMemory<byte> specMem = new(specBytes);
-
-        await specWriter.WriteAsync(specMem);
     }
 
     async IAsyncEnumerable<DocumentInfo> GetPagesAsync(string url, string specDescription, [EnumeratorCancellation] CancellationToken cancelToken)

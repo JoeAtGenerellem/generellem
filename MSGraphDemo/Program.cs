@@ -1,4 +1,6 @@
-﻿using Generellem.DocumentSource;
+﻿using Azure.Identity;
+
+using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Embedding.AzureOpenAI;
 using Generellem.Llm;
@@ -10,19 +12,30 @@ using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 
-using GenerellemConsole;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Kiota.Abstractions.Authentication;
+
+using MSGraphDemo;
+
+using System.Linq.Expressions;
+
+//
+// TODO: You need to ensure you have a /Documents/Genrellem folder, with files, for the Microsoft Account that you're logging into.
+// TODO: Failure to put files in this location will result in an error and/or the sample not working because it can't ingest files.
+//
+//[
+//  {
+//    "description": "OneDrive Generellem Files",
+//    "path": "/drive/root:/Documents/Generellem"
+//  }
+//]
 
 CancellationTokenSource tokenSource = new();
 
 IHost host = InitializeConfiguration(args);
-
-// config file location for this demo only
-GenerellemFiles.SubFolder = "ConsoleDemo";
 
 ConfigureDB();
 
@@ -74,7 +87,7 @@ void ConfigureServices(IServiceCollection services)
 
     services.AddTransient<IAzureSearchService, AzureSearchService>();
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
-    services.AddTransient<IDocumentSourceFactory, EnterpriseDocumentSourceFactory>();
+    services.AddTransient<IDocumentSourceFactory, MSGraphDocumentSourceFactory>();
     services.AddTransient<IDynamicConfiguration, DynamicConfiguration>();
     services.AddTransient<IEmbedding, AzureOpenAIEmbedding>();
     services.AddTransient<IGenerellemFiles, GenerellemFiles>();
@@ -82,6 +95,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<IGenerellemQuery, AzureOpenAIQuery>();
     services.AddTransient<IHttpClientFactory, HttpClientFactory>();
     services.AddTransient<ILlm, AzureOpenAILlm>();
+    services.AddTransient<IMSGraphClientFactory, MSGraphDeviceCodeClientFactory>();
     services.AddTransient<IPathProviderFactory, PathProviderFactory>();
     services.AddTransient<IRag, AzureOpenAIRag>();
 }

@@ -2,7 +2,7 @@
 
 namespace Generellem.DocumentSource;
 
-public class FileSpec
+public class PathSpec
 {
     [JsonPropertyName("description")]
     public string? Description { get; set; }

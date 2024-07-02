@@ -3,7 +3,7 @@ namespace Generellem.Services;
 /// <summary>
 /// Manages the location where configuration files go.
 /// </summary>
-public class GenerellemFiles
+public class GenerellemFiles : IGenerellemFiles
 {
     /// <summary>
     /// Allows the caller to set a sub folder for config files.
@@ -13,7 +13,7 @@ public class GenerellemFiles
     /// </remarks>
     public static string SubFolder { get; set; } = string.Empty;
 
-    public static string GetAppDataPath(string fileName = "")
+    public string GetAppDataPath(string fileName = "")
     {
         return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

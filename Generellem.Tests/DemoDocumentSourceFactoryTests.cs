@@ -11,7 +11,9 @@ public class DemoDocumentSourceFactoryTests
     {
         Mock<IHttpClientFactory> httpClientFactMock = new();
         Mock<ILogger<Website>> loggerMock = new();
-        DemoDocumentSourceFactory testClass = new(httpClientFactMock.Object, loggerMock.Object);
+        Mock<IPathProviderFactory> pathProviderFactMock = new();
+
+        EnterpriseDocumentSourceFactory testClass = new(httpClientFactMock.Object, loggerMock.Object, pathProviderFactMock.Object);
 
         IEnumerable<IDocumentSource> result = testClass.GetDocumentSources();
 

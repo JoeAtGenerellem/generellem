@@ -13,10 +13,11 @@ public class Pdf : IDocumentType
         ArgumentNullException.ThrowIfNull(documentStream, nameof(documentStream));
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
-        if (!File.Exists(fileName))
-            throw new FileNotFoundException("File not found", fileName);
+        MemoryStream memoryStream = new();
+        await documentStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
 
-        using PdfDocument document = PdfDocument.Open(documentStream);
+        using PdfDocument document = PdfDocument.Open(memoryStream);
 
         List<string> pages =
             (from page in document.GetPages()

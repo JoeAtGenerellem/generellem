@@ -1,6 +1,4 @@
-﻿using Xunit;
-using Moq;
-using Generellem.Document.DocumentTypes;
+﻿using Generellem.Document.DocumentTypes;
 
 public class ExcelTests
 {

@@ -28,7 +28,8 @@
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<Platforms>AnyCPU;x64</Platforms>
-	</PropertyGroup>
+	  <UserSecretsId>20671967-4acd-4c9f-b5a8-de9373cdc972</UserSecretsId>
+  </PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
@@ -70,6 +71,7 @@
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.6" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Graph" Version="5.56.0" />
 		<PackageReference Include="NPOI.HWPFCore" Version="2.3.0.1" />
 		<PackageReference Include="PdfPig" Version="0.1.8" />
 		<PackageReference Include="Polly.Core" Version="8.4.0" />
