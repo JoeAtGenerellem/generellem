@@ -25,6 +25,11 @@ public interface IGenerellemIngestion
     /// </summary>
     /// <param name="progress">Lets the caller receive progress updates.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
+    /// <param name="enableFileTracking">
+    /// Keep track of changes. Useful for full file system or website scanning 
+    /// to know which files were added, modified, or deleted. Not used in other
+    /// systems that provide real-time notifications, via webhook.
+    /// </param>
     Task IngestDocumentsAsync(IProgress<IngestionProgress> progress, CancellationToken cancelToken);
 
     /// <summary>

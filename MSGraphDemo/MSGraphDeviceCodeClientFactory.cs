@@ -17,10 +17,8 @@ public class MSGraphDeviceCodeClientFactory(IDynamicConfiguration config) : IMSG
     /// Instantiates a new <see cref="GraphServiceClient"/> for accessing MSGraph.
     /// </summary>
     /// <returns><see cref="GraphServiceClient"/>.</returns>
-    public GraphServiceClient Create()
+    public async Task<GraphServiceClient> CreateAsync(string scopes)
     {
-        var scopes = new[] { "User.Read", "Files.Read.All" };
-
         // Multi-tenant apps can use "common",
         // single-tenant apps must use the tenant ID from the Azure portal
         var tenantId = "common";
@@ -48,8 +46,8 @@ public class MSGraphDeviceCodeClientFactory(IDynamicConfiguration config) : IMSG
         // https://learn.microsoft.com/dotnet/api/azure.identity.devicecodecredential
         DeviceCodeCredential deviceCodeCredential = new(options);
 
-        GraphServiceClient graphClient = new(deviceCodeCredential, scopes);
+        GraphServiceClient graphClient = new(deviceCodeCredential, scopes.Split(' '));
 
-        return graphClient;
+        return await Task.FromResult(graphClient);
     }
 }

@@ -11,5 +11,5 @@ public interface IMSGraphClientFactory
     /// Instantiates a new <see cref="GraphServiceClient"/> for accessing MSGraph.
     /// </summary>
     /// <returns><see cref="GraphServiceClient"/></returns>
-    GraphServiceClient Create();
+    Task<GraphServiceClient> CreateAsync(string scopes);
 }
