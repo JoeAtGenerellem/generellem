@@ -15,10 +15,15 @@ public class GenerellemFiles : IGenerellemFiles
 
     public string GetAppDataPath(string fileName = "")
     {
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Generellem",
-            SubFolder,
-            fileName);
+        string folder =
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Generellem",
+                SubFolder);
+
+        if (!Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+
+        return Path.Combine(folder, fileName);
     }
 }
