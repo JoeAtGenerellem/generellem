@@ -5,26 +5,27 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<Title>Generellem</Title>
-		<Version>1.0.0.7-beta2</Version>
+		<Version>1.0.0.9-beta2</Version>
 		<Authors>Generellem</Authors>
 		<Company>Generellem</Company>
-		<Description>Use your own data with AI (LLMs)</Description>
-		<Copyright>Copyright 2024 Generellem</Copyright>
+		<Description>Use your own documents safely with AI</Description>
+		<Copyright>Copyright 2024 Generellem, Inc.</Copyright>
 		<PackageProjectUrl>https://github.com/generellem/generellem</PackageProjectUrl>
-		<PackageIcon>dp_social_G.png</PackageIcon>
+		<PackageIcon>dp_social_G_400x400.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/generellem/generellem</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>ai, generative ai, generellem, llm</PackageTags>
-		<PackageReleaseNotes>
-			This is the initial release of Generellem. It includes support for
+		<PackageReleaseNotes>New Features:
 
-			- LLM: Azure OpenAI
-			- Vector DB: Azure Cognitive Search
-			- DataSource: File System
-			- DataSource: Web Site
-			- Simple RAG with context
-		</PackageReleaseNotes>
+- Dynamic configuration for runtime config updates.
+- IProgress for caller progress updates.
+- Refactored structure of RAG process (breaking change).
+- Exposes more data to caller for greater transparency.
+- Better cross-platform support (Linux, Mac, and Windows).
+- Moved configuration artifacts from working directory to user's app data.
+- New OneDrive document source via Microsoft Graph.
+- New MSGraphDemo for the OneDrive document source.</PackageReleaseNotes>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<Platforms>AnyCPU;x64</Platforms>
@@ -48,10 +49,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Include="..\..\..\Users\jmayo\OneDrive\Documents\Generellem\Logos\other-design-a-website-logo-fo\dp_social_G.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
 		<None Include="..\README.md">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
@@ -79,5 +76,12 @@
 		<PackageReference Include="SkiaSharp" Version="2.88.8" />
 		<PackageReference Include="System.Drawing.Common" Version="8.0.6" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="dp_social_G_400x400.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 </Project>
