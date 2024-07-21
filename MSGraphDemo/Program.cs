@@ -1,6 +1,4 @@
-﻿using Azure.Identity;
-
-using Generellem.DocumentSource;
+﻿using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Embedding.AzureOpenAI;
 using Generellem.Llm;
@@ -16,11 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Kiota.Abstractions.Authentication;
 
 using MSGraphDemo;
-
-using System.Linq.Expressions;
 
 //
 // TODO: You need to ensure you have a /Documents/Genrellem folder, with files, for the Microsoft Account that you're logging into.
@@ -36,6 +31,9 @@ using System.Linq.Expressions;
 CancellationTokenSource tokenSource = new();
 
 IHost host = InitializeConfiguration(args);
+
+// config file location for this demo only
+GenerellemFiles.SubFolder = "MSGraphDemo";
 
 ConfigureDB();
 
