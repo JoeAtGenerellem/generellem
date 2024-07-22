@@ -94,10 +94,11 @@ public class Website : IDocumentSource
 
             yield return new DocumentInfo(Prefix, memStream, html, currentUrl, specDescription);
 
-            var links = GetLinks(htmlDocument, url);
+            // Turning off recursion because we have reports of circularities where it doesn't stop ingesting.
+            //var links = GetLinks(htmlDocument, url);
 
-            foreach (var link in links)
-                queue.Enqueue(link);
+            //foreach (var link in links)
+            //    queue.Enqueue(link);
         }
     }
 
