@@ -26,6 +26,16 @@ public class Ingestion(
     ILogger<Ingestion> logger) 
     : IGenerellemIngestion
 {
+#if DEBUG
+    readonly ResiliencePipeline pipeline =
+    new ResiliencePipelineBuilder()
+        .AddRetry(new()
+        {
+            ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => false)
+        })
+        .AddTimeout(TimeSpan.FromSeconds(1))
+        .Build();
+#else
     readonly ResiliencePipeline pipeline =
         new ResiliencePipelineBuilder()
             .AddRetry(new()
@@ -34,6 +44,7 @@ public class Ingestion(
             })
             .AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
+#endif
 
     /// <summary>
     /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
