@@ -51,13 +51,16 @@ public class OneDriveFileSystem : IDocumentSource
     /// <returns>Enumerable of <see cref="DocumentInfo"/>.</returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
+        IEnumerable<PathSpec> fileSpecs = await pathProvider.GetPathsAsync($"{nameof(OneDriveFileSystem)}.json");
+
+        if (fileSpecs is null || fileSpecs.Count() == 0)
+            yield break;
+
         GraphServiceClient graphClient = await msGraphFact.CreateAsync(Scopes.OneDrive);
         User? user = await graphClient.Me.GetAsync();
 
         if (user is not null)
             Prefix = $"{user.DisplayName}:{nameof(OneDriveFileSystem)}";
-
-        IEnumerable<PathSpec> fileSpecs = await pathProvider.GetPathsAsync($"{nameof(OneDriveFileSystem)}.json");
 
         foreach (PathSpec spec in fileSpecs)
         {
