@@ -2,7 +2,7 @@
 
 public interface IAzureBlobService
 {
-    Task DeleteAsync(string fileName, CancellationToken cancelToken);
-    Task<Stream> DownloadAsync(string fileName, CancellationToken cancelToken);
-    Task UploadAsync(string fileName, Stream stream, CancellationToken cancelToken);
+    Task DeleteAsync(string connStr, string container, string fileName, CancellationToken cancelToken);
+    Task<Stream> DownloadAsync(string connStr, string container, string fileName, CancellationToken cancelToken);
+    Task UploadAsync(string connStr, string container, string fileName, Stream stream, CancellationToken cancelToken);
 }
