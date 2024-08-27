@@ -10,7 +10,7 @@ public class LlmClientFactory(IDynamicConfiguration config) : ILlmClientFactory
     public virtual OpenAIClient CreateOpenAIClient()
     {
         string? endpointName = config[GKeys.AzOpenAIEndpointName];
-        ArgumentException.ThrowIfNullOrWhiteSpace(endpointName, nameof(endpointName));
+        _ = endpointName ?? throw new ArgumentNullException(nameof(endpointName), $"Please set the '{GKeys.AzOpenAIEmbeddingName}' environment variable.");
 
         string? key = config[GKeys.AzOpenAIApiKey]; ;
         ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
