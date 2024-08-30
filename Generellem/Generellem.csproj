@@ -5,27 +5,22 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<Title>Generellem</Title>
-		<Version>1.0.0.9-beta2</Version>
-		<Authors>Generellem</Authors>
-		<Company>Generellem</Company>
-		<Description>Use your own documents safely with AI</Description>
+		<Version>1.0.0.0</Version>
+		<Authors>JoeAtGenerellemAI</Authors>
+		<Company>Generellem, Inc.</Company>
+		<Description>Open-Source RAG framework for C# and other .NET developers.</Description>
 		<Copyright>Copyright 2024 Generellem, Inc.</Copyright>
-		<PackageProjectUrl>https://github.com/generellem/generellem</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/JoeAtGenerellem/generellem</PackageProjectUrl>
 		<PackageIcon>dp_social_G_400x400.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/generellem/generellem</RepositoryUrl>
+		<RepositoryUrl>https://github.com/JoeAtGenerellem/generellem</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>ai, generative ai, generellem, llm</PackageTags>
-		<PackageReleaseNotes>New Features:
+		<PackageReleaseNotes>Full Release
 
-- Dynamic configuration for runtime config updates.
-- IProgress for caller progress updates.
-- Refactored structure of RAG process (breaking change).
-- Exposes more data to caller for greater transparency.
-- Better cross-platform support (Linux, Mac, and Windows).
-- Moved configuration artifacts from working directory to user's app data.
-- New OneDrive document source via Microsoft Graph.
-- New MSGraphDemo for the OneDrive document source.</PackageReleaseNotes>
+Generellem is now out of Beta. It supports ingestion from File System, Web Sites, and OneDrive document sources. It also supports many common document types, including Word, PDF, MarkDown, and more.
+
+Changes since last beta include minor refactorings and a bug fix to make sure that users don't need to submit MSGraph credentials if they haven't specified any OneDrive folders.</PackageReleaseNotes>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<Platforms>AnyCPU;x64</Platforms>
