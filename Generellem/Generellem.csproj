@@ -29,18 +29,22 @@ Changes since last beta include minor refactorings and a bug fix to make sure th
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+		<WarningsNotAsErrors>NU5104</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
 	  <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+	  <WarningsNotAsErrors>NU5104</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+		<WarningsNotAsErrors>NU5104</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
 	  <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+	  <WarningsNotAsErrors>NU5104</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>
