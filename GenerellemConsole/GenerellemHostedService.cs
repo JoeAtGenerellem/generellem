@@ -110,17 +110,19 @@ internal class GenerellemHostedService(
 
     static void PrintBanner()
     {
-        string bannerMessage =
-"""
+        const ConsoleColor bannerColor = ConsoleColor.Magenta;
+        const ConsoleColor messageColor = ConsoleColor.Cyan;
 
-*-----------------------------------------*
-* Welcome to the Generellem Console Demo! *
-*-----------------------------------------*
+        PrintColoredText("*-----------------------------------------*", bannerColor);
+        PrintColoredText("* Welcome to the Generellem Console Demo! *", bannerColor);
+        PrintColoredText("*-----------------------------------------*", bannerColor);
 
+        Console.ForegroundColor = messageColor;
+        Console.WriteLine(@"
 This Console app lets you try out Generellem to see how it works. You can
 also use this to test new services like RAG Search and new LLMs.
 
-You can start out with a question like, "How do I contribute to Generellem?".
+You can start out with a question like, ""How do I contribute to Generellem?"".
 
 Generellem uses content from this repository to answer questions. The root 
 folder has Markdown files, like CONTRIBUTING.md. Also, the Documents folder 
@@ -135,11 +137,16 @@ services properly:
 
 https://github.com/generellem/generellem/wiki/Getting-Started
 
-Let's get started!
+Let's get started!");
+        Console.ResetColor();
+    }
 
-""";
-
-        Console.WriteLine(bannerMessage);
+    /// Helper function to print text in a specific color
+    static void PrintColoredText(string text, ConsoleColor color)
+    {
+        Console.ForegroundColor = color;
+        Console.WriteLine(text);
+        Console.ResetColor();
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
