@@ -371,5 +371,3 @@ generellem.db
 # DocFX generated files
 /api/
 /_site/
-index.md
-toc.yml
