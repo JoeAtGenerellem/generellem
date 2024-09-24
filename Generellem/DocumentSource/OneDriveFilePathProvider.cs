@@ -11,7 +11,7 @@ public class OneDriveFilePathProvider(IGenerellemFiles gemFiles) : IPathProvider
     /// Extracts file paths from the config file.
     /// </summary>
     /// <param name="configPath">Location of the config file.</param>
-    /// <returns>Enumerable of <see cref="OneDriveSpec"/>.</returns>
+    /// <returns>Enumerable of <see cref="PathSpec"/>.</returns>
     public virtual async Task<IEnumerable<PathSpec>> GetPathsAsync(string configPath = nameof(OneDriveFileSystem) + ".json")
     {
         configPath = gemFiles.GetAppDataPath(configPath);

@@ -23,7 +23,7 @@ public class TextProcessor
     /// </summary>
     /// <param name="text">Full text string to break apart.</param>
     /// <param name="documentReference">Reference to file. e.g. either a path, url, or some other indicator of where the file came from</param>
-    /// <returns>List of <see cref="TextChunk"/> representing input <see cref="text"/></returns>
+    /// <returns>List of <see cref="TextChunk"/> representing input text.</returns>
     public static List<TextChunk> BreakIntoChunks(string text, string documentReference)
     {
         List<TextChunk> chunks = [];
