@@ -45,7 +45,12 @@
       "_enableSearch": true,
       "pdf": false,
       "home": "README.md",
-      "index": "README.md"
+      "index": "index.md"
+    },
+    "fileMetadata": {
+      "index.md": {
+        "src": "README.md"
+      }
     }
   }
 }

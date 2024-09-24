@@ -1,3 +1,6 @@
 ---
-_redirect: README.md
+_layout: home
+title: "Generellem Documentation"
 ---
+
+[!include[README](README.md)]
