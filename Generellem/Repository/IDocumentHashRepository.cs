@@ -10,7 +10,6 @@ namespace Generellem.Repository;
 /// previous version of the document to see if the contents
 /// of the document changed since we last scanned it.
 /// </remarks>
-/// <param name="ctx"><see cref="GenerellemContext"/></param>
 public interface IDocumentHashRepository
 {
     /// <summary>

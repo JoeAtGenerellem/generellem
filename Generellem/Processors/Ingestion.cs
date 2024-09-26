@@ -1,17 +1,16 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-
-using Generellem.Document.DocumentTypes;
+﻿using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
-using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
 using Polly;
+
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Generellem.Processors;
 
