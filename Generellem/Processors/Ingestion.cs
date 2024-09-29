@@ -4,6 +4,7 @@ using Generellem.Embedding;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
+using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
@@ -106,7 +107,7 @@ public class Ingestion(
                     continue;
                 }
 
-                if (IsDocUnchanged(doc, fullText))
+                if (await IsDocUnchangedAsync(doc, fullText))
                     continue;
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
@@ -138,16 +139,16 @@ public class Ingestion(
     /// <param name="doc"><see cref="DocumentInfo"/> metadata of document.</param>
     /// <param name="fullText">Document text.</param>
     /// <returns>True if the current and previous hashes match.</returns>
-    protected virtual bool IsDocUnchanged(DocumentInfo doc, string fullText)
+    protected virtual async Task<bool> IsDocUnchangedAsync(DocumentInfo doc, string fullText)
     {
         string newHash = ComputeSha256Hash(fullText);
 
-        DocumentHash? document = docHashRep.GetDocumentHash(doc.DocumentReference);
+        DocumentHash? document = await docHashRep.GetDocumentHashAsync(doc.DocumentReference);
 
         if (document == null)
             try
             {
-                docHashRep.Insert(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
+                await docHashRep.InsertAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
             }
             catch (Exception ex)
             {
@@ -158,7 +159,7 @@ public class Ingestion(
         else if (document.Hash != newHash)
             try
             {
-                docHashRep.Update(document, newHash);
+                await docHashRep.UpdateAsync(document, newHash);
             }
             catch (Exception ex)
             {
@@ -227,7 +228,7 @@ public class Ingestion(
             await pipeline.ExecuteAsync(
                 async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
                 cancellationToken);
-            docHashRep.Delete(chunkDocumentReferencesToDelete);
+            await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
         }
     }
 }
