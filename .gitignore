@@ -368,6 +368,7 @@ FodyWeavers.xsd
 #SQLite DB Files
 generellem.db
 
-# DocFX generated files
+# DocFX-related files
 /api/
 /_site/
+filterConfig.yml
