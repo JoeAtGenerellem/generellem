@@ -2,7 +2,7 @@
   href: Documentation/
 - name: API
   items:
-    - name: Document Info
+    - name: Document
       href: api/Generellem.Document.yml 
     - name: Document Source
       href: api/Generellem.DocumentSource.yml
