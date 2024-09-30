@@ -38,8 +38,8 @@ public class Word : IDocumentType
     {
         using WordprocessingDocument doc = WordprocessingDocument.Open(fileStream, false);
 
-        var body = doc?.MainDocumentPart?.Document?.Body;
-        var paragraphs = body?.Elements<Paragraph>();
+        Body? body = doc?.MainDocumentPart?.Document?.Body;
+        IEnumerable<Paragraph>? paragraphs = body?.Elements<Paragraph>();
 
         return string.Join(Environment.NewLine, paragraphs?.Select(p => p.InnerText) ?? new List<string>());
     }

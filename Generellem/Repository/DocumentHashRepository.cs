@@ -1,4 +1,6 @@
-﻿namespace Generellem.Repository;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace Generellem.Repository;
 
 /// <summary>
 /// DB Operations on Document Hashes
@@ -16,12 +18,12 @@ public class DocumentHashRepository(GenerellemContext ctx) : IDocumentHashReposi
     /// Delete the <see cref="DocumentHash"/>.
     /// </summary>
     /// <param name="documentReferences">Unique DocumentReferences for the <see cref="DocumentHash"/>'s to delete.</param>
-    public void Delete(List<string> documentReferences)
+    public async Task DeleteAsync(List<string> documentReferences)
     {
-        List<DocumentHash> docHashes = GetDocumentHashes(documentReferences);
+        List<DocumentHash> docHashes = await GetDocumentHashesAsync(documentReferences);
 
         ctx.DocumentHashes.RemoveRange(docHashes);
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync();
     }
 
     /// <summary>
@@ -29,31 +31,33 @@ public class DocumentHashRepository(GenerellemContext ctx) : IDocumentHashReposi
     /// </summary>
     /// <param name="documentReference">Unique name for file.</param>
     /// <returns><see cref="DocumentHash"/> or null if not found.</returns>
-    public DocumentHash? GetDocumentHash(string documentReference) =>
+    public async Task<DocumentHash?> GetDocumentHashAsync(string documentReference) =>
+        await
         (from docHash in ctx.DocumentHashes
          where docHash.DocumentReference == documentReference
          select docHash)
-        .SingleOrDefault();
+        .SingleOrDefaultAsync();
 
     /// <summary>
     /// Queries for <see cref="DocumentHash"/>'s based on DocumentReferences.
     /// </summary>
     /// <param name="documentReferences">Unique names for files.</param>
     /// <returns><see cref="List{T}"/> of <see cref="DocumentHash"/>'s.</returns>
-    public List<DocumentHash> GetDocumentHashes(List<string> documentReferences) =>
+    public async Task<List<DocumentHash>> GetDocumentHashesAsync(List<string> documentReferences) =>
+        await
         (from docHash in ctx.DocumentHashes
          where documentReferences.Contains(docHash.DocumentReference ?? string.Empty)
          select docHash)
-        .ToList();
+        .ToListAsync();
 
     /// <summary>
     /// This is the first time we've scanned a document, so add a new record.
     /// </summary>
     /// <param name="docHash"><see cref="DocumentHash"/> to add.</param>
-    public void Insert(DocumentHash docHash)
+    public async Task InsertAsync(DocumentHash docHash)
     {
         ctx.DocumentHashes.Add(docHash);
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync();
     }
 
     /// <summary>
@@ -61,9 +65,9 @@ public class DocumentHashRepository(GenerellemContext ctx) : IDocumentHashReposi
     /// </summary>
     /// <param name="docHash">The existing <see cref="DocumentHash"/>.</param>
     /// <param name="hash">The new hash value.</param>
-    public void Update(DocumentHash docHash, string hash)
+    public async Task UpdateAsync(DocumentHash docHash, string hash)
     {
         docHash.Hash = hash;
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync();
     }
 }
