@@ -145,7 +145,7 @@ public class Ingestion(
 
         DocumentHash? document = await docHashRep.GetDocumentHashAsync(doc.DocumentReference);
 
-        if (document == null)
+        if (document?.Hash == null)
             try
             {
                 await docHashRep.InsertAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
@@ -198,16 +198,16 @@ public class Ingestion(
     /// all of the files that we can process. However, if there's a file in the
     /// index and not in the document source, the file must have been deleted.
     /// </remarks>
-    /// <param name="docSource">Filters the documentReferences that can be deleted.</param>
+    /// <param name="docSourcePrefix">Filters the documentReferences that can be deleted.</param>
     /// <param name="documentReferences">Existing document references.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    public async Task RemoveDeletedFilesAsync(string docSource, List<string> documentReferences, CancellationToken cancellationToken)
+    public async Task RemoveDeletedFilesAsync(string docSourcePrefix, List<string> documentReferences, CancellationToken cancellationToken)
     {
         bool doesIndexExist = await azSearchSvc.DoesIndexExistAsync(cancellationToken);
         if (!doesIndexExist)
             return;
 
-        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSource, cancellationToken);
+        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSourcePrefix, cancellationToken);
 
         List<string> chunkIdsToDelete = [];
         List<string> chunkDocumentReferencesToDelete = [];
