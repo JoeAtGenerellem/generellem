@@ -49,6 +49,6 @@ public interface IRag
     /// </summary>
     /// <param name="text">Text for searching for matches.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    /// <returns>List of <see cref="TextChunk"> matching query.</returns>
+    /// <returns>List of <see cref="TextChunk"/> matching query.</returns>
     Task<List<TextChunk>> SearchAsync(string text, CancellationToken cancellationToken);
 }

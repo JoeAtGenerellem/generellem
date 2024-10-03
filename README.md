@@ -1,4 +1,4 @@
-![Generellem Logo](dp_social.png)
+![Generellem Logo](images/dp_social.png)
 
 ### Generellem
 
