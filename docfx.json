@@ -1,0 +1,59 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "./Generellem",
+          "files": [
+            "**/*.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "filter": "./filterConfig.yml"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "**/*.{md,yml}",
+          "README.md"
+        ],
+        "exclude": [
+          "_site/**"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "images/**"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "globalMetadata": {
+      "_appName": "Generellem Documentation",
+      "_appTitle": "Generellem Documentation",
+      "_appLogoPath": "./images/logo.svg",
+      "_appFaviconPath": "./images/favicon.ico",
+      "_enableNewTab": true,
+      "_enableSearch": true,
+      "pdf": false,
+      "home": "README.md",
+      "index": "index.md",
+      "disableContribution": true,
+      "disableDefaultFilter":  true
+    },
+    "fileMetadata": {
+      "index.md": {
+        "src": "README.md"
+      }
+    }
+  }
+}

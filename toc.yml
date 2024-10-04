@@ -1,0 +1,21 @@
+- name: Docs
+  href: Documentation/
+- name: API
+  items:
+    - name: Document
+      href: api/Generellem.Document.yml 
+    - name: Document Source
+      href: api/Generellem.DocumentSource.yml
+    - name: Embedding
+      href: api/Generellem.Embedding.yml
+    - name: LLM
+      href: api/Generellem.Llm.yml
+    - name: Migrations
+    - name: Processors
+      href: api/Generellem.Processors.yml
+    - name: RAG
+      href: api/Generellem.Rag.yml
+    - name: Repository
+      href: api/Generellem.Repository.yml
+    - name: Services
+      href: api/Generellem.Services.yml

@@ -1,0 +1,23 @@
+### YamlMime:ManagedReference
+apiRules:
+  - include:
+      uidRegex: ^Generellem\.Document
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Embedding
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Llm
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Migrations
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Processors
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Rag
+      type: Namespace
+  - include:
+      uidRegex: ^Generellem\.Services
+      type: Namespace
