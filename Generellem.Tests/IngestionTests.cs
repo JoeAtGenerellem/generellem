@@ -299,7 +299,7 @@ public class IngestionTests
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
-            .Returns(Task.FromResult<DocumentHash?>(null));
+            .ReturnsAsync((DocumentHash?)null);
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
@@ -314,7 +314,7 @@ public class IngestionTests
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
-            .Returns(Task.FromResult<DocumentHash?>(new DocumentHash{ DocumentReference = "someReference", Hash = Guid.NewGuid().ToString()}));
+            .ReturnsAsync(new DocumentHash { DocumentReference = "", Hash = Guid.NewGuid().ToString() });
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
@@ -332,7 +332,7 @@ public class IngestionTests
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
-            .Returns(Task.FromResult<DocumentHash?>(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash }));
+            .ReturnsAsync(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash });
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
