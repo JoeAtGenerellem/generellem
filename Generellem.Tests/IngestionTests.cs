@@ -298,13 +298,13 @@ public class IngestionTests
     {
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
-            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
-            .Returns((DocumentHash?)null);
+            .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
+            .ReturnsAsync((DocumentHash?)null);
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
-            docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
+            docHashRep => docHashRep.InsertAsync(It.IsAny<DocumentHash>()),
             Times.Once);
     }
 
@@ -313,13 +313,13 @@ public class IngestionTests
     {
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
-            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
-            .Returns(new DocumentHash { DocumentReference = "", Hash = Guid.NewGuid().ToString() });
+            .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
+            .ReturnsAsync(new DocumentHash { DocumentReference = "", Hash = Guid.NewGuid().ToString() });
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
-            docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),
+            docHashRep => docHashRep.UpdateAsync(It.IsAny<DocumentHash>(), It.IsAny<string>()),
             Times.Once);
     }
 
@@ -331,16 +331,16 @@ public class IngestionTests
         const string SHA256BlankStringHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
-            .Setup(docHashRep => docHashRep.GetDocumentHash(It.IsAny<string>()))
-            .Returns(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash });
+            .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
+            .ReturnsAsync(new DocumentHash { DocumentReference = "", Hash = SHA256BlankStringHash });
 
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         docHashRepMock.Verify(
-            docHashRep => docHashRep.Update(It.IsAny<DocumentHash>(), It.IsAny<string>()),
+            docHashRep => docHashRep.UpdateAsync(It.IsAny<DocumentHash>(), It.IsAny<string>()),
             Times.Never);
         docHashRepMock.Verify(
-            docHashRep => docHashRep.Insert(It.IsAny<DocumentHash>()),
+            docHashRep => docHashRep.InsertAsync(It.IsAny<DocumentHash>()),
             Times.Never);
         embedMock.Verify(
             embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<Progress<IngestionProgress>>(), CancellationToken.None),
