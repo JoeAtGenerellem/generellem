@@ -14,6 +14,8 @@ using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
 
+using System.Text;
+
 namespace Generellem.Processors.Tests;
 
 public class IngestionTests
@@ -108,9 +110,9 @@ public class IngestionTests
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
 
         ingestion = new Ingestion(
-            azSearchSvcMock.Object, 
-            docHashRepMock.Object, 
-            docSourceFactoryMock.Object, 
+            azSearchSvcMock.Object,
+            docHashRepMock.Object,
+            docSourceFactoryMock.Object,
             embedMock.Object,
             logMock.Object);
     }
@@ -119,7 +121,8 @@ public class IngestionTests
     {
         async IAsyncEnumerable<DocumentInfo> GetDocInfos()
         {
-            yield return new DocumentInfo(DocSource, new MemoryStream(), new Text(), filePath, SpecDescription);
+            MemoryStream memStream = new(Encoding.Default.GetBytes("test"));
+            yield return new DocumentInfo(DocSource, memStream, new Text(), filePath, SpecDescription);
             await Task.CompletedTask;
         }
         docSourceMock.Setup(docSrc => docSrc.GetDocumentsAsync(It.IsAny<CancellationToken>())).Returns(GetDocInfos);
@@ -271,7 +274,7 @@ public class IngestionTests
         await ingestion.IngestDocumentsAsync(new Progress<IngestionProgress>(), CancellationToken.None);
 
         embedMock.Verify(
-            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<IProgress<IngestionProgress>>(), CancellationToken.None), 
+            embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<IProgress<IngestionProgress>>(), CancellationToken.None),
             Times.Once());
     }
 
@@ -327,8 +330,8 @@ public class IngestionTests
     public async Task ProcessFilesAsync_WithUnchangedDocument_DoesNotProcess()
     {
         // DocumentInfo from SetupGetDocumentsAsync has an empty MemoryStream
-        // that returns an empty string that hashes to SHA256BlankStringHash.
-        const string SHA256BlankStringHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        // that returns "test" that hashes to SHA256BlankStringHash.
+        const string SHA256BlankStringHash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
         SetupGetDocumentsAsync("TestDocs\\file.txt");
         docHashRepMock
             .Setup(docHashRep => docHashRep.GetDocumentHashAsync(It.IsAny<string>()))
@@ -346,29 +349,293 @@ public class IngestionTests
             embed => embed.EmbedAsync(It.IsAny<string>(), It.IsAny<IDocumentType>(), It.IsAny<string>(), It.IsAny<Progress<IngestionProgress>>(), CancellationToken.None),
             Times.Never);
     }
+
+    // File: Generellem.Tests/IngestionTests.cs
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_DocumentIsNullAndFullTextIsEmpty_DeletesDocument()
+    {
+        // Arrange
+        DocumentInfo doc = new("", null, null, "", "") { DocumentReference = "doc1" };
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = "oldHash" });
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, string.Empty);
+
+        // Assert
+        Assert.True(result);
+        docHashRepMock.Verify(repo => repo.DeleteAsync(It.IsAny<List<string>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_DocumentHashIsNull_InsertsNewHash()
+    {
+        // Arrange
+        DocumentInfo doc = new("", null, null, "", "") { DocumentReference = "doc2" };
+        string fullText = "new document text";
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(new DocumentHash());
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.False(result);
+        docHashRepMock.Verify(repo => repo.InsertAsync(It.IsAny<DocumentHash>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_DocumentHashIsDifferent_UpdatesHash()
+    {
+        // Arrange
+        DocumentInfo doc = new("", null, null, "", "") { DocumentReference = "doc3" };
+        string fullText = "updated document text";
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = "oldHash" });
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.False(result);
+        docHashRepMock.Verify(repo => repo.UpdateAsync(It.IsAny<DocumentHash>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_DocumentHashIsSame_ReturnsTrue()
+    {
+        // Arrange
+        DocumentInfo doc = new("", null, null, "", "") { DocumentReference = "doc4" };
+        string fullText = "same document text";
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+        string hash = Ingestion.ComputeSha256Hash(fullText);
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = hash });
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.True(result);
+        docHashRepMock.Verify(repo => repo.UpdateAsync(It.IsAny<DocumentHash>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_DeleteAsyncThrowsException_LogsError()
+    {
+        // Arrange
+        DocumentInfo doc = new DocumentInfo("prefix", null, null, null, null) { DocumentReference = "doc1" };
+        string fullText = string.Empty;
+        string newHash = Ingestion.ComputeSha256Hash(fullText);
+        DocumentHash documentHash = new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash };
+
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(documentHash);
+        docHashRepMock.Setup(repo => repo.DeleteAsync(It.IsAny<List<string>>()))
+                      .ThrowsAsync(new Exception("DeleteAsync exception"));
+
+        Ingestion ingestion = new Ingestion(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.True(result);
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_InsertAsyncThrowsException_LogsError()
+    {
+        // Arrange
+        DocumentInfo doc = new DocumentInfo("prefix", null, null, null, null) { DocumentReference = "doc1" };
+        string fullText = "some text";
+        string newHash = Ingestion.ComputeSha256Hash(fullText);
+
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync((DocumentHash?)null);
+        docHashRepMock.Setup(repo => repo.InsertAsync(It.IsAny<DocumentHash>()))
+                      .ThrowsAsync(new Exception("InsertAsync exception"));
+
+        Ingestion ingestion = new Ingestion(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.False(result);
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
+    public async Task IsDocUnchangedAsync_UpdateAsyncThrowsException_LogsError()
+    {
+        // Arrange
+        DocumentInfo doc = new DocumentInfo("prefix", null, null, null, null) { DocumentReference = "doc1" };
+        string fullText = "some updated text";
+        string newHash = Ingestion.ComputeSha256Hash(fullText);
+        DocumentHash documentHash = new DocumentHash { DocumentReference = doc.DocumentReference, Hash = "oldHash" };
+
+        docHashRepMock.Setup(repo => repo.GetDocumentHashAsync(doc.DocumentReference))
+                      .ReturnsAsync(documentHash);
+        docHashRepMock.Setup(repo => repo.UpdateAsync(documentHash, newHash))
+                      .ThrowsAsync(new Exception("UpdateAsync exception"));
+
+        Ingestion ingestion = new Ingestion(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        bool result = await ingestion.IsDocUnchangedAsync(doc, fullText);
+
+        // Assert
+        Assert.False(result);
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveDeletedFilesAsync_IndexDoesNotExist_DoesNothing()
+    {
+        // Arrange
+        string docSourcePrefix = "prefix";
+        List<string> documentReferences = new() { "doc1", "doc2" };
+        azSearchSvcMock.Setup(svc => svc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(false);
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        await ingestion.RemoveDeletedFilesAsync(docSourcePrefix, documentReferences, CancellationToken.None);
+
+        // Assert
+        azSearchSvcMock.Verify(svc => svc.GetDocumentReferencesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        azSearchSvcMock.Verify(svc => svc.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        docHashRepMock.Verify(repo => repo.DeleteAsync(It.IsAny<List<string>>()), Times.Never);
+    }
+
     [Fact]
     public async Task RemoveDeletedFilesAsync_WithNoDeletedFiles_DoesNotDeleteAnything()
     {
-        string docSource = "Localhost:FileSystem";
-        List<string> docSourceDocumentReferences = new List<string> { "documentReference1", "documentReference2" };
+        // Arrange
+        string docSourcePrefix = "prefix";
+        List<string> documentReferences = new() { "doc1", "doc2" };
+        azSearchSvcMock.Setup(svc => svc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(true);
+        azSearchSvcMock.Setup(svc => svc.GetDocumentReferencesAsync(docSourcePrefix, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new List<TextChunk>
+                       {
+                       new TextChunk { DocumentReference = "doc1" },
+                       new TextChunk { DocumentReference = "doc2" }
+                       });
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
 
-        await ingestion.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
+        // Act
+        await ingestion.RemoveDeletedFilesAsync(docSourcePrefix, documentReferences, CancellationToken.None);
 
-        azSearchSvcMock.Verify(
-            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        // Assert
+        azSearchSvcMock.Verify(svc => svc.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        docHashRepMock.Verify(repo => repo.DeleteAsync(It.IsAny<List<string>>()), Times.Never);
     }
 
     [Fact]
     public async Task RemoveDeletedFilesAsync_WithDeletedFiles_DeletesCorrectFiles()
     {
-        string docSource = "Localhost:FileSystem";
-        List<string> docSourceDocumentReferences = new List<string> { "file1" };
+        // Arrange
+        string docSourcePrefix = "prefix";
+        List<string> documentReferences = new() { "doc1" };
+        azSearchSvcMock.Setup(svc => svc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(true);
+        azSearchSvcMock.Setup(svc => svc.GetDocumentReferencesAsync(docSourcePrefix, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new List<TextChunk>
+                       {
+                       new TextChunk { DocumentReference = "doc1" },
+                       new TextChunk { DocumentReference = "doc2", ID = "chunk2" }
+                       });
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
 
-        await ingestion.RemoveDeletedFilesAsync(docSource, docSourceDocumentReferences, CancellationToken.None);
+        // Act
+        await ingestion.RemoveDeletedFilesAsync(docSourcePrefix, documentReferences, CancellationToken.None);
 
-        azSearchSvcMock.Verify(
-            srch => srch.DeleteDocumentReferencesAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+        // Assert
+        azSearchSvcMock.Verify(svc => svc.DeleteDocumentReferencesAsync(It.Is<List<string>>(ids => ids.Contains("chunk2")), It.IsAny<CancellationToken>()), Times.Once);
+        docHashRepMock.Verify(repo => repo.DeleteAsync(It.Is<List<string>>(refs => refs.Contains("doc2"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveDeletedFilesAsync_WithNoChunksToDelete_LogsNoChunksToDelete()
+    {
+        // Arrange
+        string docSourcePrefix = "prefix";
+        List<string> documentReferences = new() { "doc1", "doc2" };
+        azSearchSvcMock.Setup(svc => svc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(true);
+        azSearchSvcMock.Setup(svc => svc.GetDocumentReferencesAsync(docSourcePrefix, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new List<TextChunk>());
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        await ingestion.RemoveDeletedFilesAsync(docSourcePrefix, documentReferences, CancellationToken.None);
+
+        // Assert
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Exactly(4));
+    }
+
+    [Fact]
+    public async Task RemoveDeletedFilesAsync_WithNoDocumentReferencesToDelete_LogsNoDocumentReferencesToDelete()
+    {
+        // Arrange
+        string docSourcePrefix = "prefix";
+        List<string> documentReferences = new() { "doc1", "doc2" };
+        azSearchSvcMock.Setup(svc => svc.DoesIndexExistAsync(It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(true);
+        azSearchSvcMock.Setup(svc => svc.GetDocumentReferencesAsync(docSourcePrefix, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new List<TextChunk>());
+        Ingestion ingestion = new(azSearchSvcMock.Object, docHashRepMock.Object, docSourceFactoryMock.Object, embedMock.Object, logMock.Object);
+
+        // Act
+        await ingestion.RemoveDeletedFilesAsync(docSourcePrefix, documentReferences, CancellationToken.None);
+    
+        logMock
+            .Verify(
+                l => l.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+                Times.Exactly(4));
     }
 }
