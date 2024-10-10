@@ -8,6 +8,8 @@ using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
+using NPOI.SS.Formula.Functions;
+
 using Polly;
 
 using System.Security.Cryptography;
@@ -91,10 +93,8 @@ public class Ingestion(
                 ArgumentException.ThrowIfNullOrEmpty(doc.DocPath);
                 ArgumentException.ThrowIfNullOrEmpty(doc.DocumentReference);
 
-                if (doc.DocType.GetType() == typeof(Unknown))
+                 if (doc.DocType.GetType() == typeof(Unknown))
                     continue;
-
-                documentReferences.Add(doc.DocumentReference);
 
                 string fullText;
                 try
@@ -107,13 +107,24 @@ public class Ingestion(
                     continue;
                 }
 
+                if (!string.IsNullOrWhiteSpace(fullText))
+                {
+                    logger.LogInformation($"{DateTime.Now} Added {doc.DocumentReference} to {nameof(documentReferences)}");
+                    documentReferences.Add(doc.DocumentReference);
+                }
+
                 if (await IsDocUnchangedAsync(doc, fullText))
+                {
+                    logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} is unchanged.");
                     continue;
+                }
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
                 List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, progress, cancelToken);
                 await IndexAsync(chunks, cancelToken);
+
+                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} added to index.");
 
                 if (cancelToken.IsCancellationRequested)
                     break;
@@ -139,16 +150,31 @@ public class Ingestion(
     /// <param name="doc"><see cref="DocumentInfo"/> metadata of document.</param>
     /// <param name="fullText">Document text.</param>
     /// <returns>True if the current and previous hashes match.</returns>
-    protected virtual async Task<bool> IsDocUnchangedAsync(DocumentInfo doc, string fullText)
+    public virtual async Task<bool> IsDocUnchangedAsync(DocumentInfo doc, string fullText)
     {
         string newHash = ComputeSha256Hash(fullText);
 
         DocumentHash? document = await docHashRep.GetDocumentHashAsync(doc.DocumentReference);
 
-        if (document == null)
+        if (document is not null && string.IsNullOrWhiteSpace(fullText))
+            try
+            {
+                await docHashRep.DeleteAsync([doc.DocumentReference]);
+                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} deleted from hash table.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    "Unable to delete doc hash - {DocumentReference}, {DocumentHash}, {Exception}",
+                    doc.DocumentReference, newHash, ex);
+                return true;
+            }
+        else if (document?.Hash == null)
             try
             {
                 await docHashRep.InsertAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
+                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} inserted into hash table.");
             }
             catch (Exception ex)
             {
@@ -160,6 +186,7 @@ public class Ingestion(
             try
             {
                 await docHashRep.UpdateAsync(document, newHash);
+                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} updated in hash table.");
             }
             catch (Exception ex)
             {
@@ -178,7 +205,7 @@ public class Ingestion(
     /// </summary>
     /// <param name="rawData">Document Text.</param>
     /// <returns>Hash of the document text.</returns>
-    protected static string ComputeSha256Hash(string rawData)
+    public static string ComputeSha256Hash(string rawData)
     {
         byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawData));
 
@@ -198,37 +225,89 @@ public class Ingestion(
     /// all of the files that we can process. However, if there's a file in the
     /// index and not in the document source, the file must have been deleted.
     /// </remarks>
-    /// <param name="docSource">Filters the documentReferences that can be deleted.</param>
+    /// <param name="docSourcePrefix">Filters the documentReferences that can be deleted.</param>
     /// <param name="documentReferences">Existing document references.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    public async Task RemoveDeletedFilesAsync(string docSource, List<string> documentReferences, CancellationToken cancellationToken)
+    public async Task RemoveDeletedFilesAsync(string docSourcePrefix, List<string> documentReferences, CancellationToken cancellationToken)
     {
         bool doesIndexExist = await azSearchSvc.DoesIndexExistAsync(cancellationToken);
         if (!doesIndexExist)
             return;
 
-        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSource, cancellationToken);
+        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSourcePrefix, cancellationToken);
 
         List<string> chunkIdsToDelete = [];
         List<string> chunkDocumentReferencesToDelete = [];
 
+        // delete in index but not in hashes
         foreach (TextChunk chunk in chunks)
         {
             if (chunk.DocumentReference is null || documentReferences.Contains(chunk.DocumentReference))
+            {
+                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} either doesn't exist or is already known.");
                 continue;
+            }
 
             if (chunk?.ID is string chunkID)
+            {
                 chunkIdsToDelete.Add(chunkID);
+                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has an ID.");
+            }
+            else
+            {
+                logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} does not have an ID.");
+            }
+
             if (chunk?.DocumentReference is string chunkDocumentReference)
+            {
                 chunkDocumentReferencesToDelete.Add(chunkDocumentReference);
+                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has a document reference.");
+            }
+            else
+            {
+                logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} doesn't have a document reference.");
+            }
         }
+
+        List<string> indexReferences =
+            (from chunk in chunks
+             select chunk.DocumentReference)
+            .Distinct()
+            .ToList();
+
+        // delete in hashes but not in index
+        foreach (string docRef in documentReferences)
+            if (!indexReferences.Contains(docRef))
+            {
+                chunkDocumentReferencesToDelete.Add(docRef);
+                logger.LogInformation($"{DateTime.Now} the index contains {docRef}.");
+            }
+            else
+            {
+                logger.LogInformation($"{DateTime.Now} the index does not contain {docRef}.");
+            }
 
         if (chunkIdsToDelete.Count != 0)
         {
             await pipeline.ExecuteAsync(
                 async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
                 cancellationToken);
-            await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
+            logger.LogInformation($"{DateTime.Now} Deleted {chunkIdsToDelete.Count} chunks from index.");
         }
+        else
+        {
+            logger.LogInformation($"{DateTime.Now} No chunks to delete.");
+        }
+        
+        if (chunkDocumentReferencesToDelete.Count != 0)
+        {
+            await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
+            logger.LogInformation($"{DateTime.Now} Deleted {chunkDocumentReferencesToDelete.Count} document references from  hash.");
+        }
+        else
+        {
+            logger.LogInformation($"{DateTime.Now} No document references to delete.");
+        }
+
     }
 }
