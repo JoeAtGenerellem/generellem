@@ -28,6 +28,8 @@ public class OneDriveFileSystem : IDocumentSource
     readonly string OneDriveErrorMessage = $"Please set {GKeys.OneDriveUserName} via IDynamicConfiguration with the user name for the OneDrive account that we're reading from.";
 
     readonly string? oneDriveUserName;
+
+    readonly IDynamicConfiguration config;
     readonly IMSGraphClientFactory msGraphFact;
     readonly IPathProvider pathProvider;
 
@@ -36,11 +38,11 @@ public class OneDriveFileSystem : IDocumentSource
         IMSGraphClientFactory msGraphFact,
         IPathProviderFactory pathProviderFact)
     {
-        oneDriveUserName = config[GKeys.OneDriveUserName];
-
+        this.config = config;
         this.msGraphFact = msGraphFact;
         this.pathProvider = pathProviderFact.Create(this);
 
+        oneDriveUserName = config[GKeys.OneDriveUserName];
         Prefix = $"{oneDriveUserName}:{nameof(OneDriveFileSystem)}";
     }
 
@@ -51,7 +53,10 @@ public class OneDriveFileSystem : IDocumentSource
     /// <returns>Enumerable of <see cref="DocumentInfo"/>.</returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
-        GraphServiceClient graphClient = await msGraphFact.CreateAsync(Scopes.OneDrive);
+        string? baseUrl = config[GKeys.BaseUrl];
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl, nameof(baseUrl));
+
+        GraphServiceClient graphClient = await msGraphFact.CreateAsync(Scopes.OneDrive, baseUrl);
         User? user = await graphClient.Me.GetAsync();
 
         if (user is not null)
