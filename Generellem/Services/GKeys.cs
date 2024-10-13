@@ -29,6 +29,8 @@ public class GKeys
     //
     // MS Graph
     //
+
+    public const string BaseUrl = "BaseUrl";
     public const string MSGraphClientID = "MSGraphClientID";
     public const string MSGraphClientSecret = "MSGraphClientSecret";
     public const string OneDriveUserName = "OneDriveUserName";

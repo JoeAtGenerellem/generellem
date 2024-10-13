@@ -16,14 +16,15 @@ public class MSGraphDeviceCodeClientFactory(IDynamicConfiguration config) : IMSG
     /// <summary>
     /// Instantiates a new <see cref="GraphServiceClient"/> for accessing MSGraph.
     /// </summary>
+    /// <param name="scopes">The scopes to request.</param>
+    /// <param name="baseUrl">The base URL to build a return URL for the OAuth flow - not used in this implementation.</param>
     /// <returns><see cref="GraphServiceClient"/>.</returns>
-    public async Task<GraphServiceClient> CreateAsync(string scopes)
+    public async Task<GraphServiceClient> CreateAsync(string scopes, string baseUrl)
     {
         // Multi-tenant apps can use "common",
         // single-tenant apps must use the tenant ID from the Azure portal
         var tenantId = "common";
 
-        // TODO: Add MSGraphClientID as an environment variable
         // Value from app registration
         var clientId = config[GKeys.MSGraphClientID];
 
