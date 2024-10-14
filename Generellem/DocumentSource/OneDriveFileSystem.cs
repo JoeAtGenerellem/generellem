@@ -49,12 +49,17 @@ public class OneDriveFileSystem : IDocumentSource
     /// <summary>
     /// Based on the config file, scan files.
     /// </summary>
+    /// <remarks>
+    /// Callers should set the BaseUrl in the config file, environment variable, 
+    /// or dynamic configuration based on a website location. We use this to
+    /// build a callback for MSGraph authentication.
+    /// </remarks>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Enumerable of <see cref="DocumentInfo"/>.</returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
-        string? baseUrl = config[GKeys.BaseUrl];
-        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl, nameof(baseUrl));
+        // Callers should set the BaseUrl in the config file, environment variable, or dynamic configuration based on a website location.
+        string? baseUrl = config[GKeys.BaseUrl] ?? "https://set-BaseUrl-config";
 
         GraphServiceClient graphClient = await msGraphFact.CreateAsync(Scopes.OneDrive, baseUrl);
         User? user = await graphClient.Me.GetAsync();
