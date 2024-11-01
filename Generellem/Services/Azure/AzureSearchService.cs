@@ -17,7 +17,7 @@ namespace Generellem.Services.Azure;
 
 public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
 {
-    const int VectorSearchDimensions = 1536;
+    const int VectorSearchDimensions = 1536; // defined by text-embedding-ada-002
     const string VectorAlgorithmConfigName = "hnsw-config";
     const string VectorProfileName = "generellem-vector-profile";
 
@@ -77,20 +77,6 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
         }    
     }
 
-    public async Task DeleteDocumentReferencesAsync(List<string> idsToDelete, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
-        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
-
-        Uri endpoint = new(SearchServiceEndpoint);
-        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
-
-        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
-
-        var batch = IndexDocumentsBatch.Delete(nameof(TextChunk.ID), idsToDelete);
-        await searchClient.IndexDocumentsAsync(batch, null, cancellationToken);
-    }
-
     public async Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
@@ -114,6 +100,20 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
             // 404 indicates the index does not exist
             return false;
         }
+    }
+
+    public async Task DeleteDocumentReferencesAsync(List<string> idsToDelete, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
+
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
+
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
+
+        IndexDocumentsBatch<SearchDocument> batch = IndexDocumentsBatch.Delete(nameof(TextChunk.ID), idsToDelete);
+        await searchClient.IndexDocumentsAsync(batch, null, cancellationToken);
     }
 
     public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)

@@ -12,6 +12,7 @@ public interface IMSGraphClientFactory
     /// </summary>
     /// <param name="scopes">The scopes to request.</param>
     /// <param name="baseUrl">The base URL to build a return URL for the OAuth flow.</param>
+    /// <param name="tokenType">The token type to return.</param>
     /// <returns><see cref="GraphServiceClient"/></returns>
-    Task<GraphServiceClient> CreateAsync(string scopes, string baseUrl);
+    GraphServiceClient Create(string scopes, string baseUrl, MSGraphTokenType tokenType);
 }
