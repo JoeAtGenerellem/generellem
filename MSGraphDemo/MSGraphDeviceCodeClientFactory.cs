@@ -18,8 +18,9 @@ public class MSGraphDeviceCodeClientFactory(IDynamicConfiguration config) : IMSG
     /// </summary>
     /// <param name="scopes">The scopes to request.</param>
     /// <param name="baseUrl">The base URL to build a return URL for the OAuth flow - not used in this implementation.</param>
+    /// <param name="tokenType">The type of token to request.</param>
     /// <returns><see cref="GraphServiceClient"/>.</returns>
-    public async Task<GraphServiceClient> CreateAsync(string scopes, string baseUrl)
+    public GraphServiceClient Create(string scopes, string baseUrl, MSGraphTokenType tokenType)
     {
         // Multi-tenant apps can use "common",
         // single-tenant apps must use the tenant ID from the Azure portal
@@ -49,6 +50,6 @@ public class MSGraphDeviceCodeClientFactory(IDynamicConfiguration config) : IMSG
 
         GraphServiceClient graphClient = new(deviceCodeCredential, scopes.Split(' '));
 
-        return await Task.FromResult(graphClient);
+        return graphClient;
     }
 }
