@@ -11,23 +11,22 @@ public class PowerpointTests
     [Fact]
     public async Task GetTextAsync_WithValidFile_ReturnsText()
     {
-        string text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/PowerPointDoc.pptx");
+        const string File = "TestDocs/PowerPointDoc.pptx";
+        using Stream stream = System.IO.File.OpenRead(File);
+
+        string text = await powerpoint.GetTextAsync(stream, File);
 
         Assert.NotNull(text);
         Assert.NotEmpty(text);
     }
 
     [Fact]
-    public async Task GetTextAsync_WithInvalidFile_ThrowsException()
-    {
-        await Assert.ThrowsAsync<FileNotFoundException>(() =>
-            powerpoint.GetTextAsync(streamMock.Object, "TestDocs/Invalid.pptx"));
-    }
-
-    [Fact]
     public async Task GetTextAsync_WithNoText_ReturnsEmpty()
     {
-        string text = await powerpoint.GetTextAsync(streamMock.Object, "TestDocs/EmptyDeck.pptx");
+        const string File = "TestDocs/EmptyDeck.pptx";
+        using Stream stream = System.IO.File.OpenRead(File);
+
+        string text = await powerpoint.GetTextAsync(stream, File);
 
         Assert.Empty(text);
     }

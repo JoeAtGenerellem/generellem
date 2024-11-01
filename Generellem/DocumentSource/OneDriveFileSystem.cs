@@ -6,6 +6,8 @@ using Microsoft.Graph;
 
 using System.Runtime.CompilerServices;
 using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.ODataErrors;
+using System.Net;
 
 namespace Generellem.DocumentSource;
 
@@ -61,7 +63,7 @@ public class OneDriveFileSystem : IDocumentSource
         // Callers should set the BaseUrl in the config file, environment variable, or dynamic configuration based on a website location.
         string? baseUrl = config[GKeys.BaseUrl] ?? "https://set-BaseUrl-config";
 
-        GraphServiceClient graphClient = await msGraphFact.CreateAsync(Scopes.OneDrive, baseUrl);
+        GraphServiceClient graphClient = msGraphFact.Create(Scopes.OneDrive, baseUrl, MSGraphTokenType.OneDrive);
         User? user = await graphClient.Me.GetAsync();
 
         if (user is not null)
@@ -82,10 +84,20 @@ public class OneDriveFileSystem : IDocumentSource
             if (user?.Id is null)
                 continue;
 
-            // Get the DriveItem for the given path
-            DriveItem? driveItem = await graphClient.Drives[user.Id].Root
-                .ItemWithPath(path)
-                .GetAsync();
+            DriveItem? driveItem = null;
+            try
+            {
+                // Get the DriveItem for the given path
+                driveItem = await graphClient.Drives[user.Id].Root
+                    .ItemWithPath(path)
+                    .GetAsync();
+            }
+            catch (ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                // ignore the error and continue
+                // TODO: consider the possibility that we should notify the user that this folder does not exist anymore.
+                driveItem = null;
+            }
 
             if (driveItem is null)
                 continue;
@@ -131,10 +143,8 @@ public class OneDriveFileSystem : IDocumentSource
             if (children?.Value is null)
                 return files;
 
-            foreach (var child in children.Value)
-            {
+            foreach (DriveItem child in children.Value)
                 files.AddRange(await GetFilesRecursively(graphClient, child, userID));
-            }
         }
 
         return files;

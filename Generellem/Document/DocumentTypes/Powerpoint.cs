@@ -19,11 +19,14 @@ public class Powerpoint : IDocumentType
     /// <returns>String representation of PowerPoint file.</returns>
     public virtual async Task<string> GetTextAsync(Stream documentStream, string fileName)
     {
-        StringBuilder sb = new();
+        ArgumentNullException.ThrowIfNull(documentStream, nameof(documentStream));
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
 
-        using PresentationDocument presentationDocument = PresentationDocument.Open(fileName, false);
+        using PresentationDocument presentationDocument = PresentationDocument.Open(documentStream, false);
 
         PresentationPart? presentationPart = presentationDocument.PresentationPart;
+
+        StringBuilder sb = new();
 
         if (presentationPart is not null)
             foreach (SlidePart slidePart in presentationPart.SlideParts)
