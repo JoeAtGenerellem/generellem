@@ -1,18 +1,18 @@
-﻿using Azure;
-using Azure.AI.OpenAI;
+﻿using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
 using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Rag;
-using Generellem.Rag.AzureOpenAI;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
+
+using OpenAI.Chat;
 
 using System.Text;
 
@@ -34,14 +34,13 @@ public class IngestionTests
     readonly Mock<ILogger<Ingestion>> logMock = new();
     readonly Mock<IRag> ragMock = new();
 
-    readonly Mock<OpenAIClient> openAIClientMock = new();
-    readonly Mock<Response<Embeddings>> embeddingsMock = new();
+    readonly Mock<AzureOpenAIClient> openAIClientMock = new();
 
     readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly IGenerellemIngestion ingestion;
 
-    readonly Queue<ChatRequestUserMessage> chatHistory = new();
+    readonly Queue<ChatMessage> chatHistory = new();
     readonly List<IDocumentSource> docSources = [];
 
     readonly ReadOnlyMemory<float> embedding;
@@ -54,21 +53,10 @@ public class IngestionTests
             .Setup(fact => fact.GetDocumentSources())
             .Returns(docSources);
 
-        embedMock
-            .Setup(e => e.GetEmbeddingOptions(It.IsAny<string>()))
-            .Returns(new EmbeddingsOptions());
-
         embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
-        List<EmbeddingItem> embeddingItems =
-        [
-            AzureOpenAIModelFactory.EmbeddingItem(embedding)
-        ];
-        Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
-
-        openAIClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(embeddingsMock.Object);
-        embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
+        embedMock
+            .Setup(e => e.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(embedding);
 
         List<TextChunk> chunks =
         [

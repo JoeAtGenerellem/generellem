@@ -1,9 +1,7 @@
-﻿using Azure.AI.OpenAI;
-
-using Generellem.Embedding;
+﻿using Generellem.Embedding;
 using Generellem.Llm;
 
-using Polly;
+using OpenAI.Chat;
 
 namespace Generellem.Rag;
 
@@ -30,18 +28,16 @@ public interface IRag
     /// Mistrial range is 0 to 1
     /// </remarks>
     float Temperature { get; set; }
-    ResiliencePipeline Pipeline { get; set; }
 
     /// <summary>
     /// Builds a request based on prompt content.
     /// </summary>
     /// <typeparam name="TRequest">Type of request for LLM.</typeparam>
-    /// <param name="requestText">Text from user.</param>
+    /// <param name="queryText">Text from user.</param>
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    /// 
     /// <returns>Full request that can be sent to the LLM.</returns>
-    Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestMessage> chatHistory, CancellationToken cancelToken)
+    Task<TRequest> BuildRequestAsync<TRequest>(string queryText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new();
 
     /// <summary>

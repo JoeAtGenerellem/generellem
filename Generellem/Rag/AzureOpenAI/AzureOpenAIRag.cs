@@ -1,7 +1,4 @@
-﻿using System.Text;
-
-using Azure;
-using Azure.AI.OpenAI;
+﻿using Azure;
 
 using Generellem.Embedding;
 using Generellem.Llm;
@@ -9,11 +6,12 @@ using Generellem.Llm.AzureOpenAI;
 using Generellem.Processors;
 using Generellem.Services;
 using Generellem.Services.Azure;
-using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
-using Polly;
+using OpenAI.Chat;
+
+using System.Text;
 
 namespace Generellem.Rag.AzureOpenAI;
 
@@ -27,7 +25,6 @@ public class AzureOpenAIRag(
     IAzureSearchService azSearchSvc,
     IDynamicConfiguration config,
     IEmbedding embedding,
-    LlmClientFactory llmClientFact,
     ILlm llm,
     ILogger<AzureOpenAIRag> logger)
     : IRag
@@ -53,23 +50,14 @@ public class AzureOpenAIRag(
     /// </summary>
     public float Temperature { get; set; } = 0;
 
-    public ResiliencePipeline Pipeline { get; set; } = 
-        new ResiliencePipelineBuilder()
-            .AddRetry(new()
-             {
-                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => ex is not GenerellemNeedsIngestionException)
-             })
-            .AddTimeout(TimeSpan.FromSeconds(7))
-            .Build();
-
     /// <summary>
     /// Builds a request based on prompt content.
     /// </summary>
-    /// <param name="requestText">Text from user.</param>
+    /// <param name="queryText">Text from user.</param>
     /// <param name="chatHistory">Previous queries in this thread.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns>Full request that can be sent to the LLM.</returns>
-    public async Task<TRequest> BuildRequestAsync<TRequest>(string requestText, Queue<ChatRequestMessage> chatHistory, CancellationToken cancelToken)
+    public async Task<TRequest> BuildRequestAsync<TRequest>(string queryText, Queue<ChatMessage> chatHistory, CancellationToken cancelToken)
         where TRequest : IChatRequest, new()
     {
         AzureOpenAIChatRequest request = new();
@@ -77,21 +65,21 @@ public class AzureOpenAIRag(
         string? deploymentName = config[GKeys.AzOpenAIDeploymentName];
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentName, nameof(deploymentName));
 
-        request.SummarizedUserIntent = await SummarizeUserIntentAsync(requestText, chatHistory, deploymentName, cancelToken);
+        request.SummarizedUserIntent = await SummarizeUserIntentAsync(queryText, chatHistory, deploymentName, cancelToken);
         string summarizedIntentMessage = request.SummarizedUserIntent.Response?.Text ?? string.Empty;
 
         string context = await BuildContext(request, summarizedIntentMessage, cancelToken);
 
-        ChatRequestUserMessage userQuery = new(requestText);
+        UserChatMessage userQuery = new(queryText);
 
-        List<ChatRequestMessage> messages =
+        request.Messages =
         [
-            new ChatRequestSystemMessage(SystemMessage + "\n" + context),
+            new SystemChatMessage(SystemMessage + "\n" + context),
             userQuery
         ];
 
         request.Options =
-            new ChatCompletionsOptions(deploymentName, messages)
+            new ChatCompletionOptions
             {
                 Temperature = Temperature
             };
@@ -123,23 +111,30 @@ public class AzureOpenAIRag(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     /// <returns><see cref="QueryDetails{TRequest, TResponse}"/> including clarification of user query, based on context.</returns>
     protected virtual async Task<QueryDetails<AzureOpenAIChatRequest, AzureOpenAIChatResponse>> SummarizeUserIntentAsync(
-        string userQuery, Queue<ChatRequestMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
+        string userQuery, Queue<ChatMessage> chatHistory, string deploymentName, CancellationToken cancelToken)
     {
         StringBuilder sb = new();
 
-        foreach (ChatRequestMessage chatMessage in chatHistory)
-            sb.AppendLine($"{chatMessage.Role}: {AzureOpenAIChatRequest.GetRequestContent(chatMessage)}\n");
+        foreach (ChatMessage chatMessage in chatHistory)
+        {
+            string role = chatMessage is UserChatMessage ? "User" : "System";
+            sb.AppendLine($"{role}: {chatMessage.Content}\n");
+        }
 
-        List<ChatRequestSystemMessage> messages =
+        List<ChatMessage> messages =
         [
-            new ChatRequestSystemMessage(
+            new SystemChatMessage(
                 ContextMessage +
                 $"\n\nChat History: {sb}" +
                 $"\n\nUser's query: {userQuery}")
         ];
 
-        ChatCompletionsOptions chatCompletionOptions = new(deploymentName, messages);
-        AzureOpenAIChatRequest request = new() { Options = chatCompletionOptions };
+        ChatCompletionOptions chatCompletionOptions = new();
+        AzureOpenAIChatRequest request = new() 
+        {
+            Messages = messages,
+            Options = chatCompletionOptions 
+        };
 
         AzureOpenAIChatResponse lastResponse = await llm.PromptAsync<AzureOpenAIChatResponse>(request, cancelToken);
 
@@ -158,27 +153,13 @@ public class AzureOpenAIRag(
     /// <returns>List of text chunks matching query.</returns>
     public virtual async Task<List<TextChunk>> SearchAsync(string text, CancellationToken cancellationToken)
     {
-        EmbeddingsOptions embeddingsOptions = embedding.GetEmbeddingOptions(text);
-
         try
         {
-            OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
+            ReadOnlyMemory<float> embeddingVector = await embedding.GetEmbeddingAsync(text, cancellationToken);
 
-            Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
-            async token => await openAiClient.GetEmbeddingsAsync(embeddingsOptions, token),
-                cancellationToken);
-
-            ReadOnlyMemory<float> embedding = embeddings.Value.Data[0].Embedding;
-
-            List<TextChunk> chunks = await Pipeline.ExecuteAsync(
-                async token => await azSearchSvc.SearchAsync<TextChunk>(embedding, token),
-                cancellationToken);
+            List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embeddingVector, cancellationToken);
 
             return chunks;
-            //return
-            //    (from chunk in chunks
-            //     select chunk.Content)
-            //    .ToList();
         }
         catch (RequestFailedException rfEx)
         {

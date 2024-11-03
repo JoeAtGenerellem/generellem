@@ -1,9 +1,10 @@
 ﻿using Azure;
-using Azure.AI.OpenAI;
 
 using Generellem.Services;
 
 using Microsoft.Extensions.Logging;
+
+using OpenAI.Chat;
 
 using Polly;
 using Polly.Retry;
@@ -17,21 +18,21 @@ public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAIL
     public ResiliencePipeline Pipeline { get; set; } = 
         new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions())
-            .AddTimeout(TimeSpan.FromSeconds(7))
+            //.AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
 
-    public virtual async Task<TResponse> PromptAsync<TResponse>(IChatRequest? request, CancellationToken cancellationToken)
+    public virtual async Task<TResponse> PromptAsync<TResponse>(IChatRequest? chatRequest, CancellationToken cancellationToken)
         where TResponse : IChatResponse
     {
-        ChatCompletionsOptions? completionsOptions = (request as AzureOpenAIChatRequest)?.Options;
-        ArgumentNullException.ThrowIfNull(completionsOptions, nameof(completionsOptions));
+        AzureOpenAIChatRequest? request = chatRequest as AzureOpenAIChatRequest;
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        ArgumentNullException.ThrowIfNull(request.Messages, nameof(request.Messages));
 
         try
         {
-            OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
-
-            ChatCompletions chatCompletionsResponse = await Pipeline.ExecuteAsync<ChatCompletions>(
-                async token => await openAiClient.GetChatCompletionsAsync(completionsOptions, token),
+            ChatClient chatClient = llmClientFact.CreateChatClient();
+            ChatCompletion chatCompletionsResponse = await Pipeline.ExecuteAsync<ChatCompletion>(
+                async token => await chatClient.CompleteChatAsync(request.Messages, request.Options, token),
                 cancellationToken);
 
             IChatResponse chatResponse = new AzureOpenAIChatResponse(chatCompletionsResponse);

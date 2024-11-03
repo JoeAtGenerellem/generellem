@@ -1,6 +1,4 @@
-﻿using Azure.AI.OpenAI;
-
-using Generellem.Document.DocumentTypes;
+﻿using Generellem.Document.DocumentTypes;
 using Generellem.Processors;
 
 using Polly;
@@ -21,11 +19,5 @@ public interface IEmbedding
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     /// <returns><see cref="List{T}"/> of <see cref="TextChunk"/>, which holds both the real and embedded content.</returns>
     Task<List<TextChunk>> EmbedAsync(string fullText, IDocumentType docType, string fileName, IProgress<IngestionProgress> progress, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Embedding Options for Azure Search.
-    /// </summary>
-    /// <param name="text">Text string for calculating options.</param>
-    /// <returns><see cref="EmbeddingsOptions"/></returns>
-    EmbeddingsOptions GetEmbeddingOptions(string text);
+    Task<ReadOnlyMemory<float>> GetEmbeddingAsync(string text, CancellationToken cancellationToken);
 }

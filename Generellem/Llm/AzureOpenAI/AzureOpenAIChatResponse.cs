@@ -1,4 +1,4 @@
-﻿using Azure.AI.OpenAI;
+﻿using OpenAI.Chat;
 
 namespace Generellem.Llm;
 
@@ -13,12 +13,21 @@ public class AzureOpenAIChatResponse : IChatResponse
     {
     }
 
-    public AzureOpenAIChatResponse(ChatCompletions chatCompletionsResponse)
+    public AzureOpenAIChatResponse(ChatCompletion chatCompletionsResponse)
     {
         this.ChatCompletionsResponse = chatCompletionsResponse;
     }
 
-    public virtual ChatCompletions ChatCompletionsResponse { get; init; }
+    public virtual ChatCompletion ChatCompletionsResponse { get; init; }
 
-    public virtual string? Text => ChatCompletionsResponse?.Choices[0]?.Message?.Content;
+    public virtual string Text
+    {
+        get         
+        {
+            if (ChatCompletionsResponse is not null && ChatCompletionsResponse.Content is not null && ChatCompletionsResponse.Content.Count > 0)
+                return ChatCompletionsResponse.Content[0].Text;
+            else
+                return string.Empty;
+        }
+    }
 }

@@ -1,11 +1,11 @@
-﻿using Azure.AI.OpenAI;
-
-using Generellem.DocumentSource;
+﻿using Generellem.DocumentSource;
 using Generellem.Processors;
 using Generellem.Services;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using OpenAI.Chat;
 
 namespace MSGraphDemo;
 
@@ -88,7 +88,7 @@ internal class GenerellemHostedService(
 
         string? userInput;
 
-        Queue<ChatRequestMessage> chatHistory = new();
+        Queue<ChatMessage> chatHistory = new();
 
         do
         {

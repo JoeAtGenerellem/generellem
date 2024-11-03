@@ -1,10 +1,14 @@
 ﻿using Azure;
-using Azure.AI.OpenAI;
 
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Services;
+using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
+
+using OpenAI;
+using OpenAI.Chat;
+
 using Polly;
 
 namespace Generellem.Llm.Tests;
@@ -14,7 +18,8 @@ public class AzureOpenAILlmTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<ILogger<AzureOpenAILlm>> logMock = new();
     readonly Mock<OpenAIClient> openAIClientMock = new();
-    readonly Mock<Response<ChatCompletions>> completionsMock = new();
+    readonly Mock<ChatClient> chatClientMock = new();
+    readonly Mock<ClientResultMock<ChatCompletion>> completionResultMock = new();
 
     readonly Mock<LlmClientFactory> llmClientFactMock;
 
@@ -22,23 +27,24 @@ public class AzureOpenAILlmTests
 
     public AzureOpenAILlmTests()
     {
+        openAIClientMock
+            .Setup(client => client.GetChatClient(It.IsAny<string>()))
+            .Returns(chatClientMock.Object);
+        chatClientMock
+            .Setup(client => client.CompleteChatAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatCompletionOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(completionResultMock.Object);
+
         configMock
             .Setup(config => config[GKeys.AzOpenAIEndpointName])
             .Returns("https://generellem");
         configMock
             .Setup(config => config[GKeys.AzOpenAIApiKey])
             .Returns("generellem-key");
-        llmClientFactMock = new(configMock.Object);
 
-        ChatCompletions completions = 
-            AzureOpenAIModelFactory.ChatCompletions(
-                Guid.NewGuid().ToString(),
-                DateTimeOffset.Now,
-                []);
-        openAIClientMock.Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(completionsMock.Object);
-        completionsMock.SetupGet(m => m.Value).Returns(completions);
-        llmClientFactMock.Setup(m => m.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+        llmClientFactMock = new(configMock.Object);
+        llmClientFactMock
+            .Setup(m => m.CreateChatClient())
+            .Returns(chatClientMock.Object);
 
         llm = new AzureOpenAILlm(llmClientFactMock.Object, logMock.Object);
     }
@@ -53,13 +59,12 @@ public class AzureOpenAILlmTests
     [Fact]
     public async Task PromptAsync_WithValidInput_ReturnsResponse()
     {
-        List<ChatRequestUserMessage> chatMessages =
-        [
-            new ChatRequestUserMessage("What is Generellem?")
-        ];
-        var request = new AzureOpenAIChatRequest()
+        AzureOpenAIChatRequest request = new()
         {
-            Options = new ChatCompletionsOptions("generellem-deployment", chatMessages)
+            Messages =
+            [
+                new UserChatMessage("What is Generellem?")
+            ]
         };
 
         var result = await llm.PromptAsync<IChatResponse>(request, CancellationToken.None);
@@ -73,10 +78,13 @@ public class AzureOpenAILlmTests
         llm.Pipeline = new ResiliencePipelineBuilder().Build();
         AzureOpenAIChatRequest request = new()
         {
-            Options = new ChatCompletionsOptions("mydeployment", [new ChatRequestUserMessage("Some Content")])
+            Messages =
+            [
+                new UserChatMessage("What is Generellem?")
+            ]
         };
-        openAIClientMock
-            .Setup(client => client.GetChatCompletionsAsync(It.IsAny<ChatCompletionsOptions>(), It.IsAny<CancellationToken>()))
+        chatClientMock
+            .Setup(client => client.CompleteChatAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatCompletionOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>
