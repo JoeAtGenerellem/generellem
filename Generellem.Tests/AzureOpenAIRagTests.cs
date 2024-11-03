@@ -10,7 +10,8 @@ using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
-using Polly;
+
+using OpenAI.Chat;
 
 namespace Generellem.Rag.Tests;
 
@@ -22,32 +23,13 @@ public class AzureOpenAIRagTests
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
 
-    readonly Mock<OpenAIClient> openAIClientMock = new();
-    readonly Mock<Response<Embeddings>> embeddingsMock = new();
+    readonly Mock<AzureOpenAIClient> openAIClientMock = new();
     readonly Mock<LlmClientFactory> llmClientFactMock;
 
     readonly AzureOpenAIRag azureOpenAIRag;
-    readonly ReadOnlyMemory<float> embedding;
 
     public AzureOpenAIRagTests()
     {
-        embedMock
-            .Setup(e => e.GetEmbeddingOptions(It.IsAny<string>()))
-            .Returns(new EmbeddingsOptions());
-
-        embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
-        List<EmbeddingItem> embeddingItems =
-        [
-            AzureOpenAIModelFactory.EmbeddingItem(embedding)
-        ];
-        Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
-
-        openAIClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(embeddingsMock.Object);
-
-        embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
-
         configMock
             .Setup(config => config[GKeys.AzOpenAIEndpointName])
             .Returns("https://generellem");
@@ -57,6 +39,11 @@ public class AzureOpenAIRagTests
         llmClientFactMock = new(configMock.Object);
 
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAIClientMock.Object);
+
+        var embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
+        embedMock
+            .Setup(embed => embed.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(embedding);
 
         List<TextChunk> chunks =
         [
@@ -86,7 +73,6 @@ public class AzureOpenAIRagTests
                 azSearchSvcMock.Object, 
                 configMock.Object, 
                 embedMock.Object, 
-                llmClientFactMock.Object, 
                 llmMock.Object, 
                 logMock.Object);
     }
@@ -107,7 +93,7 @@ public class AzureOpenAIRagTests
             .Returns("generellem");
 
         AzureOpenAIChatRequest request = await azureOpenAIRag.BuildRequestAsync<AzureOpenAIChatRequest>(
-            "Hello", new Queue<ChatRequestMessage>(), CancellationToken.None);
+            "Hello", new Queue<ChatMessage>(), CancellationToken.None);
 
         Assert.Contains(searchResults[0]?.Content ?? "", request.Text);
         Assert.Contains(searchResults[1]?.Content ?? "", request.Text);
@@ -116,7 +102,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task AskAsync_WithNullDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatRequestMessage> chatHistory = new();
+        Queue<ChatMessage> chatHistory = new();
         configMock.SetupGet(config => config[GKeys.AzOpenAIDeploymentName]).Returns(value: null);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -127,7 +113,7 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task AskAsync_WithEmptyDeploymentName_ThrowsArgumentNullException()
     {
-        Queue<ChatRequestMessage> chatHistory = new();
+        Queue<ChatMessage> chatHistory = new();
         configMock.Setup(config => config[GKeys.AzOpenAIDeploymentName]).Returns(string.Empty);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -136,12 +122,12 @@ public class AzureOpenAIRagTests
     }
 
     [Fact]
-    public async Task SearchAsync_CallsGetEmbeddingsAsync()
+    public async Task SearchAsync_CallsGetEmbeddingAsync()
     {
         await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
-        openAIClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+        embedMock.Verify(
+            client => client.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -151,7 +137,7 @@ public class AzureOpenAIRagTests
         await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
         azSearchSvcMock.Verify(srchSvc =>
-            srchSvc.SearchAsync<TextChunk>(embedding, It.IsAny<CancellationToken>()),
+            srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -168,9 +154,8 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task SearchAsync_WithRequestFailedExceptionOnGetEmbeddings_LogsAnError()
     {
-        azureOpenAIRag.Pipeline = new ResiliencePipelineBuilder().Build();
-        openAIClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+        embedMock
+            .Setup(client => client.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>
@@ -190,7 +175,6 @@ public class AzureOpenAIRagTests
     [Fact]
     public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
     {
-        azureOpenAIRag.Pipeline = new ResiliencePipelineBuilder().Build();
         azSearchSvcMock
             .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));

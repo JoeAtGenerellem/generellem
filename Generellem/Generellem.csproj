@@ -55,7 +55,7 @@ Changes since last beta include minor refactorings and a bug fix to make sure th
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.16" />
+		<PackageReference Include="Azure.AI.OpenAI" Version="2.0.0" />
 		<PackageReference Include="Azure.Search.Documents" Version="11.6.0" />
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
 		<PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
