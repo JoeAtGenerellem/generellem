@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.AI.OpenAI;
 
 using Generellem.Document.DocumentTypes;
 using Generellem.Llm;
@@ -10,12 +9,15 @@ using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
+using OpenAI.Embeddings;
+
 using Polly;
+
+using System.ClientModel;
 
 namespace Generellem.Embedding.AzureOpenAI;
 
 public class AzureOpenAIEmbedding(
-    IDynamicConfiguration config, 
     LlmClientFactory llmClientFact, 
     ILogger<AzureOpenAIEmbedding> logger)
     : IEmbedding
@@ -60,6 +62,8 @@ public class AzureOpenAIEmbedding(
         int count = 0;
         string plural = chunkCount == 1 ? "" : "s";
 
+        EmbeddingClient embedingClient = llmClientFact.CreateEmbeddingClient();
+
         foreach (TextChunk chunk in chunks)
         {
             if (chunk.Content is null) continue;
@@ -68,14 +72,11 @@ public class AzureOpenAIEmbedding(
 
             try
             {
-                OpenAIClient openAiClient = llmClientFact.CreateOpenAIClient();
-
-                EmbeddingsOptions embeddingsOptions = GetEmbeddingOptions(chunk.Content);
-                Response<Embeddings> embeddings = await Pipeline.ExecuteAsync<Response<Embeddings>>(
-                    async token => await openAiClient.GetEmbeddingsAsync(embeddingsOptions, token),
+                ClientResult<OpenAIEmbedding> embeddingResult = await Pipeline.ExecuteAsync(
+                    async token => await embedingClient.GenerateEmbeddingAsync(chunk.Content),
                     cancellationToken);
 
-                chunk.Embedding = embeddings.Value.Data[0].Embedding;
+                chunk.Embedding = embeddingResult.Value.ToFloats();
             }
             catch (RequestFailedException rfEx)
             {
@@ -87,18 +88,14 @@ public class AzureOpenAIEmbedding(
         return chunks;
     }
 
-    /// <summary>
-    /// Embedding Options for Azure Search.
-    /// </summary>
-    /// <param name="text">Text string for calculating options.</param>
-    /// <returns><see cref="EmbeddingsOptions"/></returns>
-    public EmbeddingsOptions GetEmbeddingOptions(string text)
+    public async Task<ReadOnlyMemory<float>> GetEmbeddingAsync(string text, CancellationToken cancellationToken)
     {
-        string? embeddingName = config[GKeys.AzOpenAIEmbeddingName];
-        ArgumentException.ThrowIfNullOrWhiteSpace(embeddingName, nameof(embeddingName));
+        EmbeddingClient embedingClient = llmClientFact.CreateEmbeddingClient();
 
-        EmbeddingsOptions embeddingsOptions = new(embeddingName, new string[] { text });
+        ClientResult<OpenAIEmbedding> embeddingResult = await Pipeline.ExecuteAsync(
+            async token => await embedingClient.GenerateEmbeddingAsync(text),
+            cancellationToken);
 
-        return embeddingsOptions;
+        return embeddingResult.Value.ToFloats();
     }
 }

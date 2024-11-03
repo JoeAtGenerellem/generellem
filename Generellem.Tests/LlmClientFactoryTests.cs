@@ -1,11 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 
-using Generellem.Llm;
 using Generellem.Services;
-
-using Microsoft.Extensions.Configuration;
-
-using Moq;
 
 namespace Generellem.Llm.Tests;
 
@@ -32,6 +27,6 @@ public class LlmClientFactoryTests
     {
         var result = factory.CreateOpenAIClient();
 
-        Assert.IsType<OpenAIClient>(result);
+        Assert.IsType<AzureOpenAIClient>(result);
     }
 }

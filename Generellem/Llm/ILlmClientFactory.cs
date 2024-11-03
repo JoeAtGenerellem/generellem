@@ -1,7 +1,11 @@
 ﻿using Azure.AI.OpenAI;
 
+using OpenAI.Chat;
+
 namespace Generellem.Llm;
+
 public interface ILlmClientFactory
 {
-    OpenAIClient CreateOpenAIClient();
+    ChatClient CreateChatClient();
+    AzureOpenAIClient CreateOpenAIClient();
 }

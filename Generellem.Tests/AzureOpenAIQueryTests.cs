@@ -1,8 +1,4 @@
-﻿using System.Text.Json;
-
-using Azure.AI.OpenAI;
-
-using Generellem.DocumentSource;
+﻿using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
@@ -10,6 +6,8 @@ using Generellem.Rag;
 using Generellem.Services.Azure;
 
 using Microsoft.Extensions.Logging;
+
+using OpenAI.Chat;
 
 namespace Generellem.Processors.Tests;
 
@@ -25,7 +23,7 @@ public class AzureOpenAIQueryTests
     readonly Mock<IRag> ragMock = new();
 
     readonly AzureOpenAIQuery azureQuery;
-    readonly Queue<ChatRequestMessage> chatHistory = new();
+    readonly Queue<ChatMessage> chatHistory = new();
 
     readonly List<IDocumentSource> docSources = [];
 
@@ -35,7 +33,7 @@ public class AzureOpenAIQueryTests
     public AzureOpenAIQueryTests()
     {
         ragMock
-            .Setup(rag => rag.BuildRequestAsync<AzureOpenAIChatRequest>(It.IsAny<string>(), It.IsAny<Queue<ChatRequestMessage>>(), It.IsAny<CancellationToken>()))
+            .Setup(rag => rag.BuildRequestAsync<AzureOpenAIChatRequest>(It.IsAny<string>(), It.IsAny<Queue<ChatMessage>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chatRequest);
         llmMock
             .Setup(llm => llm.PromptAsync<AzureOpenAIChatResponse>(It.IsAny<IChatRequest>(), It.IsAny<CancellationToken>()))
@@ -53,7 +51,7 @@ public class AzureOpenAIQueryTests
         ragMock.Verify(rag => 
             rag.BuildRequestAsync<AzureOpenAIChatRequest>(
                 It.IsAny<string>(), 
-                It.IsAny<Queue<ChatRequestMessage>>(), 
+                It.IsAny<Queue<ChatMessage>>(), 
                 CancellationToken.None), 
             Times.Once());
     }

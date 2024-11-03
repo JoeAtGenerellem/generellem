@@ -9,8 +9,11 @@ using Generellem.Processors;
 using Generellem.Services;
 using Generellem.Services.Azure;
 using Generellem.Tests;
-using Microsoft.Extensions.Azure;
+
 using Microsoft.Extensions.Logging;
+
+using OpenAI.Embeddings;
+
 using Polly;
 
 namespace Generellem.Rag.Tests;
@@ -22,9 +25,10 @@ public class AzureOpenAIEmbedTests
     readonly Mock<IDocumentType> docTypeMock = new();
     readonly Mock<ILogger<AzureOpenAIEmbedding>> logMock = new();
     readonly Mock<IProgress<IngestionProgress>> progMock = new();
-    readonly Mock<OpenAIClient> openAiClientMock = new();
-    readonly Mock<Response<Embeddings>> embeddingsMock = new();
-
+    readonly Mock<AzureOpenAIClient> openAiClientMock = new();
+    readonly Mock<EmbeddingClient> embeddingClientMock = new();
+    readonly Mock<ClientResultMock<OpenAIEmbedding>> embeddingResultMock = new();
+    OpenAIEmbedding embedding = OpenAIEmbeddingsModelFactory.OpenAIEmbedding(0, TestEmbeddings.CreateEmbeddingArray());
     readonly IEmbedding azureOpenAiEmbedding;
 
     public AzureOpenAIEmbedTests()
@@ -44,17 +48,14 @@ public class AzureOpenAIEmbedTests
             .Returns("generellem-key");
         Mock<LlmClientFactory> llmClientFactMock = new(configMock.Object);
 
-        var embedding = new ReadOnlyMemory<float>(TestEmbeddings.CreateEmbeddingArray());
-        List<EmbeddingItem> embeddingItems =
-        [
-            AzureOpenAIModelFactory.EmbeddingItem(embedding)
-        ];
-        Embeddings embeddings = AzureOpenAIModelFactory.Embeddings(embeddingItems);
-
-        openAiClientMock.Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(embeddingsMock.Object);
-
-        embeddingsMock.SetupGet(embed => embed.Value).Returns(embeddings);
+        openAiClientMock.Setup(client => client.GetEmbeddingClient(It.IsAny<string>()))
+            .Returns(embeddingClientMock.Object);
+        embeddingClientMock
+            .Setup(embed => embed.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(embeddingResultMock.Object);
+        embeddingResultMock
+            .SetupGet(embed => embed.Value)
+            .Returns(embedding);
 
         llmClientFactMock.Setup(llm => llm.CreateOpenAIClient()).Returns(openAiClientMock.Object);
 
@@ -83,12 +84,11 @@ public class AzureOpenAIEmbedTests
             .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
-        azureOpenAiEmbedding = new AzureOpenAIEmbedding(
-            configMock.Object, llmClientFactMock.Object, logMock.Object);
+        azureOpenAiEmbedding = new AzureOpenAIEmbedding(llmClientFactMock.Object, logMock.Object);
     }
 
     [Fact]
-    public async Task EmbedAsync_CallsGetEmbeddingsAsync()
+    public async Task EmbedAsync_CallsGenerateEmbeddingAsync()
     {
         TextProcessor.ChunkSize = 5000;
         TextProcessor.Overlap = 100;
@@ -96,7 +96,10 @@ public class AzureOpenAIEmbedTests
         await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
         openAiClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+            client => client.GetEmbeddingClient(It.IsAny<string>()),
+            Times.AtLeastOnce());
+        embeddingClientMock.Verify(
+            client => client.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce());
     }
 
@@ -110,8 +113,8 @@ public class AzureOpenAIEmbedTests
 
         await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAiClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+        embeddingClientMock.Verify(
+            client => client.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
         TextProcessor.ChunkSize = oldChunSize;
         TextProcessor.Overlap = oldOverlap;
@@ -127,8 +130,8 @@ public class AzureOpenAIEmbedTests
 
         await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAiClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()),
+        embeddingClientMock.Verify(
+            client => client.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(3));
         TextProcessor.ChunkSize = oldChunSize;
         TextProcessor.Overlap = oldOverlap;
@@ -144,11 +147,11 @@ public class AzureOpenAIEmbedTests
 
         await azureOpenAiEmbedding.EmbedAsync("Test document text", docTypeMock.Object, "file", progMock.Object, CancellationToken.None);
 
-        openAiClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.Is<EmbeddingsOptions>(eo => eo.Input[0] == "Test docume"), It.IsAny<CancellationToken>()),
+        embeddingClientMock.Verify(
+            client => client.GenerateEmbeddingAsync("Test docume", It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()),
             Times.Once);
-        openAiClientMock.Verify(
-            client => client.GetEmbeddingsAsync(It.Is<EmbeddingsOptions>(eo => eo.Input[0] == "ument text"), It.IsAny<CancellationToken>()),
+        embeddingClientMock.Verify(
+            client => client.GenerateEmbeddingAsync("ument text", It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()),
             Times.Once);
         TextProcessor.ChunkSize = oldChunSize;
         TextProcessor.Overlap = oldOverlap;
@@ -183,8 +186,8 @@ public class AzureOpenAIEmbedTests
     public async Task EmbedAsync_WithRequestFailedException_LogsAnError()
     {
         azureOpenAiEmbedding.Pipeline = new ResiliencePipelineBuilder().Build();
-        openAiClientMock
-            .Setup(client => client.GetEmbeddingsAsync(It.IsAny<EmbeddingsOptions>(), It.IsAny<CancellationToken>()))
+        embeddingClientMock
+            .Setup(client => client.GenerateEmbeddingAsync(It.IsAny<string>(), It.IsAny<EmbeddingGenerationOptions>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>
