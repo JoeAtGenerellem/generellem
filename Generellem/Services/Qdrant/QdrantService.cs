@@ -113,7 +113,7 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
 
-        IReadOnlyList<ulong> ids = idsToDelete.Select(id => ulong.Parse(id)).ToList();
+        IReadOnlyList<Guid> ids = idsToDelete.Select(id => Guid.Parse(id)).ToList();
         try
         {
             Uri endpoint = new(QdrantEndpoint);
