@@ -83,7 +83,7 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<GenerellemContext>();
     services.AddTransient<LlmClientFactory, LlmClientFactory>();
 
-    services.AddTransient<IAzureSearchService, AzureSearchService>();
+    services.AddTransient<ISearchService, AzureSearchService>();
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, MSGraphDocumentSourceFactory>();
     services.AddTransient<IDynamicConfiguration, DynamicConfiguration>();

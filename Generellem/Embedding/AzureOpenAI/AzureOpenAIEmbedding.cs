@@ -18,7 +18,7 @@ using System.ClientModel;
 namespace Generellem.Embedding.AzureOpenAI;
 
 public class AzureOpenAIEmbedding(
-    LlmClientFactory llmClientFact, 
+    ILlmClientFactory llmClientFact, 
     ILogger<AzureOpenAIEmbedding> logger)
     : IEmbedding
 {

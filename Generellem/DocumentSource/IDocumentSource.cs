@@ -14,7 +14,7 @@ public interface IDocumentSource
     /// <summary>
     /// Every source has a unique prefix to disambiguate file paths/names.
     /// </summary>
-    string Prefix { get; set; }
+    string Reference { get; set; }
 
     /// <summary>
     /// Scans the document source for documents.
