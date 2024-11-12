@@ -3,8 +3,7 @@ using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag;
-using Generellem.Services.Azure;
-
+using Generellem.Services;
 using Microsoft.Extensions.Logging;
 
 using OpenAI.Chat;
@@ -15,7 +14,7 @@ public class AzureOpenAIQueryTests
 {
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
-    readonly Mock<IAzureSearchService> azSearchSvcMock = new();
+    readonly Mock<ISearchService> azSearchSvcMock = new();
     readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILlm> llmMock = new();
     readonly Mock<ILlmClientFactory> llmFactMock = new();

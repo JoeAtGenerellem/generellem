@@ -5,7 +5,6 @@ using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Processors;
 using Generellem.Services;
-using Generellem.Services.Azure;
 
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +21,7 @@ namespace Generellem.Rag.AzureOpenAI;
 /// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
 public class AzureOpenAIRag(
-    IAzureSearchService azSearchSvc,
+    ISearchService azSearchSvc,
     IDynamicConfiguration config,
     IEmbedding embedding,
     ILlm llm,
@@ -157,7 +156,7 @@ public class AzureOpenAIRag(
         {
             ReadOnlyMemory<float> embeddingVector = await embedding.GetEmbeddingAsync(text, cancellationToken);
 
-            List<TextChunk> chunks = await azSearchSvc.SearchAsync<TextChunk>(embeddingVector, cancellationToken);
+            List<TextChunk> chunks = await azSearchSvc.SearchAsync(embeddingVector, cancellationToken);
 
             return chunks;
         }

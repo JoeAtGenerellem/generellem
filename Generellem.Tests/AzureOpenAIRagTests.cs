@@ -6,7 +6,6 @@ using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Rag.AzureOpenAI;
 using Generellem.Services;
-using Generellem.Services.Azure;
 using Generellem.Tests;
 
 using Microsoft.Extensions.Logging;
@@ -17,7 +16,7 @@ namespace Generellem.Rag.Tests;
 
 public class AzureOpenAIRagTests
 {
-    readonly Mock<IAzureSearchService> azSearchSvcMock = new();
+    readonly Mock<ISearchService> azSearchSvcMock = new();
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILlm> llmMock = new();
@@ -61,7 +60,7 @@ public class AzureOpenAIRagTests
             }
         ];
         azSearchSvcMock
-            .Setup(srchSvc => srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .Setup(srchSvc => srchSvc.SearchAsync(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(chunks);
 
         llmMock
@@ -86,7 +85,7 @@ public class AzureOpenAIRagTests
             new() { Content = "result2" }
         };
         azSearchSvcMock
-            .Setup(search => search.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .Setup(search => search.SearchAsync(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResults);
         configMock
             .Setup(config => config[GKeys.AzOpenAIDeploymentName])
@@ -137,7 +136,7 @@ public class AzureOpenAIRagTests
         await azureOpenAIRag.SearchAsync("text", CancellationToken.None);
 
         azSearchSvcMock.Verify(srchSvc =>
-            srchSvc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()),
+            srchSvc.SearchAsync(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()),
             Times.Once());
     }
 
@@ -176,7 +175,7 @@ public class AzureOpenAIRagTests
     public async Task SearchAsync_WithRequestFailedExceptionOnAzSearch_LogsAnError()
     {
         azSearchSvcMock
-            .Setup(svc => svc.SearchAsync<TextChunk>(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
+            .Setup(svc => svc.SearchAsync(It.IsAny<ReadOnlyMemory<float>>(), It.IsAny<CancellationToken>()))
             .Throws(new RequestFailedException("Unauthorized"));
 
         await Assert.ThrowsAsync<RequestFailedException>(async () =>

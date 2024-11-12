@@ -15,13 +15,11 @@ using Polly.Retry;
 
 namespace Generellem.Services.Azure;
 
-public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearchService> logger) : IAzureSearchService
+public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearchService> logger) : ISearchService
 {
     const int VectorSearchDimensions = 1536; // defined by text-embedding-ada-002
     const string VectorAlgorithmConfigName = "hnsw-config";
     const string VectorProfileName = "generellem-vector-profile";
-
-    readonly ILogger<AzureSearchService> logger = logger;
 
     string? SearchServiceAdminApiKey => config[GKeys.AzSearchServiceAdminApiKey];
     string? SearchServiceEndpoint => config[GKeys.AzSearchServiceEndpoint];
@@ -35,6 +33,9 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
 
     public virtual async Task CreateIndexAsync(CancellationToken cancelToken)
     {
+        if (await DoesIndexExistAsync(cancelToken))
+            return;
+
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
 
@@ -77,7 +78,7 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
         }    
     }
 
-    public async Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken)
+    async Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
@@ -118,9 +119,12 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
 
     public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)
     {
+        if (!await DoesIndexExistAsync(cancellationToken))
+            return new();
+
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
-
+        
         Uri endpoint = new(SearchServiceEndpoint);
         AzureKeyCredential credential = new(SearchServiceAdminApiKey);
 
@@ -177,7 +181,7 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
         }    
     }
 
-    public virtual async Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding, CancellationToken cancelToken)
+    public virtual async Task<List<TextChunk>> SearchAsync(ReadOnlyMemory<float> embedding, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
@@ -197,11 +201,11 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
 
         try
         {
-            SearchResults<TResponse> results = await pipeline.ExecuteAsync<SearchResults<TResponse>>(
-                async token => await searchClient.SearchAsync<TResponse>(searchOptions, cancellationToken: token),
+            SearchResults<TextChunk> results = await pipeline.ExecuteAsync<SearchResults<TextChunk>>(
+                async token => await searchClient.SearchAsync<TextChunk>(searchOptions, cancellationToken: token),
                 cancelToken);
         
-            List<TResponse> chunks =
+            List<TextChunk> chunks =
                 (from chunk in results.GetResultsAsync().ToBlockingEnumerable(cancelToken)
                  select chunk.Document)
                 .ToList();

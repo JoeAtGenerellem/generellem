@@ -38,12 +38,18 @@ public class TextProcessor
             
             string content = text[start..end];
 
+            int sourceRefSeparatorPos = documentReference.IndexOf("@");
+            if (sourceRefSeparatorPos < 0)
+                throw new ArgumentException("Document reference must contain a source reference separated by '@'.", nameof(documentReference));
+            string sourceReference = documentReference.Substring(0, sourceRefSeparatorPos);
+
             chunks.Add(
                 new TextChunk()
                 {
                     ID = Guid.NewGuid().ToString(),
                     Content = content,
-                    DocumentReference = documentReference
+                    DocumentReference = documentReference,
+                    SourceReference = sourceReference
                 });
         }
         

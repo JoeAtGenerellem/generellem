@@ -15,7 +15,7 @@ public class FileSystem : IDocumentSource
     /// </summary>
     public string Description { get; set; } = "File System";
 
-    public string Prefix { get; set; } = $"{Environment.MachineName}:{nameof(FileSystem)}";
+    public string Reference { get; set; } = $"{Environment.MachineName}:{nameof(FileSystem)}";
 
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
     
@@ -62,7 +62,7 @@ public class FileSystem : IDocumentSource
                     IDocumentType docType = DocumentTypeFactory.Create(fileName);
                     Stream fileStream = File.OpenRead(filePath);
 
-                    yield return new DocumentInfo(Prefix, fileStream, docType, filePath, specDescription);
+                    yield return new DocumentInfo(Reference, fileStream, docType, filePath, specDescription);
 
                     if (cancelToken.IsCancellationRequested)
                         break;

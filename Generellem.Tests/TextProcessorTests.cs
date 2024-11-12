@@ -4,13 +4,14 @@ namespace Generellem.Rag.Tests;
 
 public class TextProcessorTests
 {
+    private const string DefaultDocumentReference = "mysource@file1.txt";
+
     [Fact]
     public void BreakIntoChunks_WithShortText_ReturnsOneChunk()
     {
         string? text = "Hello world";
-        string? documentReference = "file1.txt";
 
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, documentReference);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
 
         Assert.Single(chunks);
     }
@@ -19,9 +20,8 @@ public class TextProcessorTests
     public void BreakIntoChunks_WithLongText_ReturnsMultipleChunks()
     {
         string? text = new('a', 6000);
-        string? documentReference = "file1.txt";
 
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, documentReference);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
 
         Assert.True(chunks.Count > 1);
     }
@@ -33,9 +33,8 @@ public class TextProcessorTests
         const int SecondChunkSize = 1100;
 
         string? text = new('a', 6000);
-        string? documentReference = "file1.txt";
 
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, documentReference);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
 
         Assert.Equal(FirstChunkSize, chunks[0]?.Content?.Length);
         Assert.Equal(SecondChunkSize, chunks[1]?.Content?.Length);
@@ -45,9 +44,8 @@ public class TextProcessorTests
     public void BreakIntoChunks_WithLongText_ReturnsOverlappedText()
     {
         string? text = new string('a', 4995) + "1234567890" + new string('b', 995);
-        string? documentReference = "file1.txt";
 
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, documentReference);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
 
         Assert.Equal(chunks[0]?.Content?[^100..], chunks[1]?.Content?[..100]);
     }
@@ -56,10 +54,28 @@ public class TextProcessorTests
     public void BreakIntoChunks_ChunksHaveCorrectContent()
     {
         string? text = new string('a', 4995) + "1234567890" + new string('b', 995);
-        string? documentReference = "file1.txt";
 
-        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, documentReference);
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
 
         Assert.Equal(text, chunks[0]?.Content?[..^100] + chunks[1].Content);
+    }
+    
+    [Fact]
+    public void BreakIntoChunks_PopulatesReferences()
+    {
+        string? text = "Some content.";
+
+        List<TextChunk> chunks = TextProcessor.BreakIntoChunks(text, DefaultDocumentReference);
+
+        Assert.Equal("mysource", chunks[0].SourceReference);
+        Assert.Equal("mysource@file1.txt", chunks[0].DocumentReference);
+    }
+    
+    [Fact]
+    public void BreakIntoChunks_WithMissingSourceReference_Throws()
+    {
+        string? text = "Some content.";
+
+        Assert.Throws<ArgumentException>(() => TextProcessor.BreakIntoChunks(text, "invalid"));
     }
 }

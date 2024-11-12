@@ -22,7 +22,7 @@ public class Website : IDocumentSource
     /// </summary>
     public string Description { get; set; } = "Web Site";
 
-    public string Prefix { get; set; } = $"{Environment.MachineName}:{nameof(Website)}";
+    public string Reference { get; set; } = $"{Environment.MachineName}:{nameof(Website)}";
 
     readonly HttpClient httpClient;
     readonly ILogger<Website> logger;
@@ -92,7 +92,7 @@ public class Website : IDocumentSource
                 Position = 0
             };
 
-            yield return new DocumentInfo(Prefix, memStream, html, currentUrl, specDescription);
+            yield return new DocumentInfo(Reference, memStream, html, currentUrl, specDescription);
 
             // Turning off recursion because we have reports of circularities where it doesn't stop ingesting.
             //var links = GetLinks(htmlDocument, url);

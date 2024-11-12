@@ -11,7 +11,7 @@ using Polly.Retry;
 
 namespace Generellem.Llm.AzureOpenAI;
 
-public class AzureOpenAILlm(LlmClientFactory llmClientFact, ILogger<AzureOpenAILlm> logger) : ILlm
+public class AzureOpenAILlm(ILlmClientFactory llmClientFact, ILogger<AzureOpenAILlm> logger) : ILlm
 {
     readonly ILogger<AzureOpenAILlm> logger = logger;
 

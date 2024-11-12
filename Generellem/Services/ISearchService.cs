@@ -1,13 +1,12 @@
 ﻿using Generellem.Embedding;
 
-namespace Generellem.Services.Azure;
+namespace Generellem.Services;
 
-public interface IAzureSearchService
+public interface ISearchService
 {
     Task CreateIndexAsync(CancellationToken cancelToken);
     Task DeleteDocumentReferencesAsync(List<string> documentReferencesToDelete, CancellationToken cancellationToken);
-    Task<bool> DoesIndexExistAsync(CancellationToken cancellationToken);
     Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken);
-    Task<List<TResponse>> SearchAsync<TResponse>(ReadOnlyMemory<float> embedding, CancellationToken cancelToken);
+    Task<List<TextChunk>> SearchAsync(ReadOnlyMemory<float> embedding, CancellationToken cancelToken);
     Task UploadDocumentsAsync(List<TextChunk> documents, CancellationToken cancelToken);
 }
