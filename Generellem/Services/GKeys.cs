@@ -36,4 +36,14 @@ public class GKeys
     public const string OneDriveUserName = "OneDriveUserName";
     public const string SharedDocumentsID = "Shared Documents";
     public const string SharePointUserName = "SharePointUserName";
+
+    //
+    // Qdrant
+    //
+
+    public const string QdrantApiKey = "GenerellemQdrantApiKey";
+    public const string QdrantCollection = "GenerellemQdrantCollection";
+    public const string QdrantEndpoint = "GenerellemQdrantEndpoint";
+    public const string QdrantGroupID = "GenerellemQdrantGroupID";
+    public const string QdrantTenantID = "GenerellemQdrantTenantID";
 }

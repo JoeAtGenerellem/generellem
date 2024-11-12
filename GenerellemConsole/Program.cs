@@ -70,9 +70,10 @@ void ConfigureServices(IServiceCollection services)
     services.AddHostedService<GenerellemHostedService>();
 
     services.AddTransient<GenerellemContext>();
-    services.AddTransient<LlmClientFactory, LlmClientFactory>();
+    services.AddTransient<ILlmClientFactory, LlmClientFactory>();
 
-    services.AddTransient<IAzureSearchService, AzureSearchService>();
+    services.AddTransient<ISearchService, QdrantService>();
+    //services.AddTransient<ISearchService, AzureSearchService>();
     services.AddTransient<IDocumentHashRepository, DocumentHashRepository>();
     services.AddTransient<IDocumentSourceFactory, EnterpriseDocumentSourceFactory>();
     services.AddTransient<IDynamicConfiguration, DynamicConfiguration>();

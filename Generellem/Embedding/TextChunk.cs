@@ -6,4 +6,5 @@ public class TextChunk
     public virtual string? DocumentReference { get; set; }
     public virtual string? Content { get; set; }
     public virtual ReadOnlyMemory<float> Embedding { get; set; }
+    public virtual string? SourceReference { get; set; }
 }

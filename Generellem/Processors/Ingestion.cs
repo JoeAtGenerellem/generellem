@@ -3,7 +3,6 @@ using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Repository;
 using Generellem.Services;
-using Generellem.Services.Azure;
 using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
@@ -19,7 +18,7 @@ namespace Generellem.Processors;
 /// Ingests documents into the system
 /// </summary>
 public class Ingestion(
-    IAzureSearchService azSearchSvc,
+    ISearchService azSearchSvc,
     IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact,
     IEmbedding embedding,
@@ -128,7 +127,7 @@ public class Ingestion(
                     break;
             }
 
-            await RemoveDeletedFilesAsync(docSource.Prefix, documentReferences, cancelToken);
+            await RemoveDeletedFilesAsync(docSource.Reference, documentReferences, cancelToken);
 
             progress.Report(new($"Completed the {docSource.Description} Document Source"));
             progress.Report(new($""));
@@ -228,10 +227,6 @@ public class Ingestion(
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
     public async Task RemoveDeletedFilesAsync(string docSourcePrefix, List<string> documentReferences, CancellationToken cancellationToken)
     {
-        bool doesIndexExist = await azSearchSvc.DoesIndexExistAsync(cancellationToken);
-        if (!doesIndexExist)
-            return;
-
         List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSourcePrefix, cancellationToken);
 
         List<string> chunkIdsToDelete = [];
@@ -242,28 +237,28 @@ public class Ingestion(
         {
             if (chunk.DocumentReference is null || documentReferences.Contains(chunk.DocumentReference))
             {
-                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} either doesn't exist or is already known.");
+                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} either doesn't exist or is already known.");
                 continue;
             }
 
             if (chunk?.ID is string chunkID)
             {
                 chunkIdsToDelete.Add(chunkID);
-                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has an ID.");
+                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has an ID.");
             }
             else
             {
-                logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} does not have an ID.");
+                //logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} does not have an ID.");
             }
 
             if (chunk?.DocumentReference is string chunkDocumentReference)
             {
                 chunkDocumentReferencesToDelete.Add(chunkDocumentReference);
-                logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has a document reference.");
+                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has a document reference.");
             }
             else
             {
-                logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} doesn't have a document reference.");
+                //logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} doesn't have a document reference.");
             }
         }
 
@@ -278,11 +273,11 @@ public class Ingestion(
             if (!indexReferences.Contains(docRef))
             {
                 chunkDocumentReferencesToDelete.Add(docRef);
-                logger.LogInformation($"{DateTime.Now} the index contains {docRef}.");
+                //logger.LogInformation($"{DateTime.Now} the index contains {docRef}.");
             }
             else
             {
-                logger.LogInformation($"{DateTime.Now} the index does not contain {docRef}.");
+                //logger.LogInformation($"{DateTime.Now} the index does not contain {docRef}.");
             }
 
         if (chunkIdsToDelete.Count != 0)
@@ -290,21 +285,21 @@ public class Ingestion(
             await pipeline.ExecuteAsync(
                 async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
                 cancellationToken);
-            logger.LogInformation($"{DateTime.Now} Deleted {chunkIdsToDelete.Count} chunks from index.");
+            //logger.LogInformation($"{DateTime.Now} Deleted {chunkIdsToDelete.Count} chunks from index.");
         }
         else
         {
-            logger.LogInformation($"{DateTime.Now} No chunks to delete.");
+            //logger.LogInformation($"{DateTime.Now} No chunks to delete.");
         }
         
         if (chunkDocumentReferencesToDelete.Count != 0)
         {
             await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
-            logger.LogInformation($"{DateTime.Now} Deleted {chunkDocumentReferencesToDelete.Count} document references from  hash.");
+            //logger.LogInformation($"{DateTime.Now} Deleted {chunkDocumentReferencesToDelete.Count} document references from  hash.");
         }
         else
         {
-            logger.LogInformation($"{DateTime.Now} No document references to delete.");
+            //logger.LogInformation($"{DateTime.Now} No document references to delete.");
         }
 
     }

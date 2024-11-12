@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Generellem.Repository;
 
@@ -56,7 +57,7 @@ public class DocumentHashRepository(GenerellemContext ctx) : IDocumentHashReposi
     /// <param name="docHash"><see cref="DocumentHash"/> to add.</param>
     public async Task InsertAsync(DocumentHash docHash)
     {
-        ctx.DocumentHashes.Add(docHash);
+        EntityEntry<DocumentHash> hash = ctx.DocumentHashes.Add(docHash);
         await ctx.SaveChangesAsync();
     }
 

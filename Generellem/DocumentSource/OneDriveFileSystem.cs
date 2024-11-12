@@ -24,7 +24,7 @@ public class OneDriveFileSystem : IDocumentSource
     /// <summary>
     /// Used in the vector DB to uniquely identify the document and where it was ingested from.
     /// </summary>
-    public string Prefix { get; set; }
+    public string Reference { get; set; }
 
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
     readonly string OneDriveErrorMessage = $"Please set {GKeys.OneDriveUserName} via IDynamicConfiguration with the user name for the OneDrive account that we're reading from.";
@@ -45,7 +45,7 @@ public class OneDriveFileSystem : IDocumentSource
         this.pathProvider = pathProviderFact.Create(this);
 
         oneDriveUserName = config[GKeys.OneDriveUserName];
-        Prefix = $"{oneDriveUserName}:{nameof(OneDriveFileSystem)}";
+        Reference = $"{oneDriveUserName}:{nameof(OneDriveFileSystem)}";
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ public class OneDriveFileSystem : IDocumentSource
         User? user = await graphClient.Me.GetAsync();
 
         if (user is not null)
-            Prefix = $"{user.DisplayName}:{nameof(OneDriveFileSystem)}";
+            Reference = $"{user.DisplayName}:{nameof(OneDriveFileSystem)}";
 
         IEnumerable<PathSpec> fileSpecs = await pathProvider.GetPathsAsync($"{nameof(OneDriveFileSystem)}.json");
 
@@ -115,7 +115,7 @@ public class OneDriveFileSystem : IDocumentSource
 
                 // Get the stream for each file
                 Stream? fileStream = await graphClient.Drives[user.Id].Items[file.Id].Content.GetAsync();
-                yield return new DocumentInfo(Prefix, fileStream, docType, filePath, specDescription);
+                yield return new DocumentInfo(Reference, fileStream, docType, filePath, specDescription);
 
                 if (cancelToken.IsCancellationRequested)
                     break;
