@@ -3,6 +3,13 @@
 public class GKeys
 {
     //
+    // Filters
+    //
+
+    public const string GroupID = "GroupID";
+    public const string TenantID = "TenantID";
+
+    //
     // Azure Blob Service
     //
 
@@ -44,6 +51,4 @@ public class GKeys
     public const string QdrantApiKey = "GenerellemQdrantApiKey";
     public const string QdrantCollection = "GenerellemQdrantCollection";
     public const string QdrantEndpoint = "GenerellemQdrantEndpoint";
-    public const string QdrantGroupID = "GenerellemQdrantGroupID";
-    public const string QdrantTenantID = "GenerellemQdrantTenantID";
 }
