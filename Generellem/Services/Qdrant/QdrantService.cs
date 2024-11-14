@@ -25,8 +25,8 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
 
     string? QdrantApiKey => config[GKeys.QdrantApiKey];
     string? QdrantEndpoint => config[GKeys.QdrantEndpoint]; //"http://localhost:6334";
-    string? QdrantTenantID => config[GKeys.QdrantTenantID] ?? string.Empty;
-    string? SearchGroupID => config[GKeys.QdrantGroupID] ?? string.Empty;
+    string QdrantTenantID => config[GKeys.TenantID] ?? "0";
+    string QdrantGroupID => config[GKeys.GroupID] ?? "0";
     string? QdrantCollection => config[GKeys.QdrantCollection];
 
     bool collectionExists = false;
@@ -158,7 +158,7 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = SearchGroupID } },
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
 				    },
 			    }
 		    };
@@ -218,7 +218,7 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
                         [SourceReference] = doc.SourceReference!,
                         [Content] = doc.Content!,
                         [TenantID] = QdrantTenantID ?? string.Empty,
-                        [GroupID] = SearchGroupID ?? string.Empty
+                        [GroupID] = QdrantGroupID ?? string.Empty
                      },
                      Vectors = doc.Embedding.ToArray()
                  })
@@ -258,7 +258,7 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = SearchGroupID } },
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
 				    },
 			    }
 		    };
