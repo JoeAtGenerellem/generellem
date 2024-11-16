@@ -68,7 +68,8 @@ public class AzureOpenAIEmbedding(
         {
             if (chunk.Content is null) continue;
 
-            progress.Report(new($"Processing {++count} of {chunkCount} chunk{plural}"));
+            chunk.Order = ++count;
+            progress.Report(new($"Processing {chunk.Order} of {chunkCount} chunk{plural}"));
 
             try
             {
