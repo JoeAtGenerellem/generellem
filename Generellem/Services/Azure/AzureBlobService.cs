@@ -1,4 +1,5 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
 using Polly;
@@ -14,7 +15,7 @@ public class AzureBlobService : IAzureBlobService
             .AddTimeout(TimeSpan.FromSeconds(3))
             .Build();
 
-    public virtual async Task UploadAsync(string connStr, string container, string fileName, Stream stream, CancellationToken cancelToken)
+    public virtual async Task<BlobContentInfo> UploadAsync(string connStr, string container, string fileName, Stream stream, CancellationToken cancelToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connStr, nameof(connStr));
         ArgumentException.ThrowIfNullOrWhiteSpace(container, nameof(container));
@@ -23,9 +24,11 @@ public class AzureBlobService : IAzureBlobService
 
         BlobClient blobClient = new(connStr, container, fileName);
 
-        await pipeline.ExecuteAsync(
+        Response<BlobContentInfo> blobInfo = await pipeline.ExecuteAsync(
             async token => await blobClient.UploadAsync(stream, overwrite: true, token),
             cancelToken);
+
+        return blobInfo;
     }
 
     public virtual async Task<Stream> DownloadAsync(string connStr, string container, string fileName, CancellationToken cancelToken)

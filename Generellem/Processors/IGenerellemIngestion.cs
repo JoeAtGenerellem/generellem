@@ -1,5 +1,5 @@
 ﻿
-using Generellem.Embedding;
+using Generellem.DocumentSource;
 
 namespace Generellem.Processors;
 
@@ -9,16 +9,14 @@ namespace Generellem.Processors;
 public interface IGenerellemIngestion
 {
     /// <summary>
-    /// Index/Reindex the search engine.
+    /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
     /// </summary>
-    /// <remarks>
-    /// Search engines might be different in that they can index individual documents 
-    /// or send in multiple documents and then index. Therefore, calling code needs to 
-    /// call this because we can't assume when or if indexing should happen.
-    /// </remarks>
-    /// <param name="chunks">Content and embeddings to upload to the index.</param>
+    /// <param name="doc"><see cref="DocumentInfo"/></param>
+    /// <param name="docSrc"><see cref="IDocumentSource"/></param>
+    /// <param name="fullText">Plaintext of document.</param>
+    /// <param name="progress">Reports progress.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken);
+    Task IndexAsync(DocumentInfo doc, string fullText, IDocumentSource docSrc, IProgress<IngestionProgress> progress, CancellationToken cancellationToken);
 
     /// <summary>
     /// Recursive search of documents from specified document sources

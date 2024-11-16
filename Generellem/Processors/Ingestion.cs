@@ -3,7 +3,6 @@ using Generellem.DocumentSource;
 using Generellem.Embedding;
 using Generellem.Repository;
 using Generellem.Services;
-using Generellem.Services.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
@@ -18,11 +17,11 @@ namespace Generellem.Processors;
 /// Ingests documents into the system
 /// </summary>
 public class Ingestion(
-    ISearchService azSearchSvc,
     IDocumentHashRepository docHashRep,
     IDocumentSourceFactory docSourceFact,
     IEmbedding embedding,
-    ILogger<Ingestion> logger) 
+    ILogger<Ingestion> logger,
+    ISearchService azSearchSvc)
     : IGenerellemIngestion
 {
 #if DEBUG
@@ -48,19 +47,19 @@ public class Ingestion(
     /// <summary>
     /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
     /// </summary>
-    /// <param name="chunks">Mulitple <see cref="TextChunk"/> instances for a document.</param>
+    /// <param name="doc"><see cref="DocumentInfo"/></param>
+    /// <param name="docSrc"><see cref="IDocumentSource"/></param>
+    /// <param name="fullText">Plaintext of document.</param>
+    /// <param name="progress">Reports progress.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    public virtual async Task IndexAsync(List<TextChunk> chunks, CancellationToken cancellationToken)
+    public virtual async Task IndexAsync(DocumentInfo doc, string fullText, IDocumentSource docSrc, IProgress<IngestionProgress> progress, CancellationToken cancellationToken)
     {
-        if (chunks.Count is 0)
+        if (doc?.DocType is null)
             return;
 
-        await pipeline.ExecuteAsync(
-            async token => await azSearchSvc.CreateIndexAsync(token),
-            cancellationToken);
-        await pipeline.ExecuteAsync(
-            async token => await azSearchSvc.UploadDocumentsAsync(chunks, token),
-            cancellationToken);
+        List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, progress, cancellationToken);
+        await azSearchSvc.CreateIndexAsync(cancellationToken);
+        await azSearchSvc.UploadDocumentsAsync(chunks, cancellationToken);
     }
 
     /// <summary>
@@ -106,22 +105,21 @@ public class Ingestion(
 
                 if (!string.IsNullOrWhiteSpace(fullText))
                 {
-                    logger.LogInformation($"{DateTime.Now} Added {doc.DocumentReference} to {nameof(documentReferences)}");
+                    //logger.LogInformation($"{DateTime.Now} Added {doc.DocumentReference} to {nameof(documentReferences)}");
                     documentReferences.Add(doc.DocumentReference);
                 }
 
                 if (await IsDocUnchangedAsync(doc, fullText))
                 {
-                    logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} is unchanged.");
+                    //logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} is unchanged.");
                     continue;
                 }
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
-                List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, progress, cancelToken);
-                await IndexAsync(chunks, cancelToken);
+                await IndexAsync(doc, fullText, docSource, progress, cancelToken);
 
-                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} added to index.");
+                //logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} added to index.");
 
                 if (cancelToken.IsCancellationRequested)
                     break;
