@@ -117,6 +117,47 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
         await searchClient.IndexDocumentsAsync(batch, null, cancellationToken);
     }
 
+    public async Task<List<TextChunk>> GetDocumentReferenceAsync(string documentReference, CancellationToken cancellationToken)
+    {
+        if (!await DoesIndexExistAsync(cancellationToken))
+            return new();
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceAdminApiKey, nameof(SearchServiceAdminApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchServiceEndpoint, nameof(SearchServiceEndpoint));
+        
+        Uri endpoint = new(SearchServiceEndpoint);
+        AzureKeyCredential credential = new(SearchServiceAdminApiKey);
+
+        SearchClient searchClient = new(endpoint, SearchServiceIndex, credential);
+
+        SearchOptions options = new()
+        {
+            Filter = $"search.ismatch('{documentReference}*', '{nameof(TextChunk.DocumentReference)}')"
+        };
+        options.Select.Add(nameof(TextChunk.ID));
+        options.Select.Add(nameof(TextChunk.DocumentReference));
+
+        List<TextChunk> chunks = new();
+
+        try
+        {
+            Response<SearchResults<TextChunk>> response =
+                await pipeline.ExecuteAsync(
+                    async token => await searchClient.SearchAsync<TextChunk>(string.Empty, options, cancellationToken),
+                    cancellationToken);
+
+            await foreach (SearchResult<TextChunk> result in response.Value.GetResultsAsync())
+                chunks.Add(result.Document);
+        }
+        catch (RequestFailedException rfEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rfEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
+
+        return chunks;
+    }
+
     public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)
     {
         if (!await DoesIndexExistAsync(cancellationToken))

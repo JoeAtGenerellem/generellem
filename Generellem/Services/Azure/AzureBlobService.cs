@@ -22,13 +22,15 @@ public class AzureBlobService : IAzureBlobService
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName, nameof(fileName));
         ArgumentNullException.ThrowIfNull(stream, nameof(stream));
 
+        stream.Position = 0;
+
         BlobClient blobClient = new(connStr, container, fileName);
 
         Response<BlobContentInfo> blobInfo = await pipeline.ExecuteAsync(
             async token => await blobClient.UploadAsync(stream, overwrite: true, token),
             cancelToken);
 
-        return blobInfo;
+        return blobInfo.Value;
     }
 
     public virtual async Task<Stream> DownloadAsync(string connStr, string container, string fileName, CancellationToken cancelToken)

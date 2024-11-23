@@ -21,7 +21,7 @@ public class Ingestion(
     IDocumentSourceFactory docSourceFact,
     IEmbedding embedding,
     ILogger<Ingestion> logger,
-    ISearchService azSearchSvc)
+    ISearchService searchSvc)
     : IGenerellemIngestion
 {
 #if DEBUG
@@ -38,7 +38,7 @@ public class Ingestion(
         new ResiliencePipelineBuilder()
             .AddRetry(new()
             {
-                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => ex is not GenerellemNeedsIngestionException)
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex => ex is not Generellem.Services.Exceptions.GenerellemNeedsIngestionException)
             })
             .AddTimeout(TimeSpan.FromSeconds(7))
             .Build();
@@ -48,18 +48,18 @@ public class Ingestion(
     /// Creates an Azure Search index (if it doesn't already exist), uploads document chunks, and indexes the chunks.
     /// </summary>
     /// <param name="doc"><see cref="DocumentInfo"/></param>
-    /// <param name="docSrc"><see cref="IDocumentSource"/></param>
     /// <param name="fullText">Plaintext of document.</param>
+    /// <param name="docSrc"><see cref="IDocumentSource"/></param>
     /// <param name="progress">Reports progress.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
-    public virtual async Task IndexAsync(DocumentInfo doc, string fullText, IDocumentSource docSrc, IProgress<IngestionProgress> progress, CancellationToken cancellationToken)
+    public virtual async Task InsertOrUpdateDocumentAsync(DocumentInfo doc, string fullText, IDocumentSource docSrc, IProgress<IngestionProgress> progress, CancellationToken cancellationToken)
     {
         if (doc?.DocType is null)
             return;
 
         List<TextChunk> chunks = await embedding.EmbedAsync(fullText, doc.DocType, doc.DocumentReference, progress, cancellationToken);
-        await azSearchSvc.CreateIndexAsync(cancellationToken);
-        await azSearchSvc.UploadDocumentsAsync(chunks, cancellationToken);
+        await searchSvc.CreateIndexAsync(cancellationToken);
+        await searchSvc.UploadDocumentsAsync(chunks, cancellationToken);
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ public class Ingestion(
                     documentReferences.Add(doc.DocumentReference);
                 }
 
-                if (await IsDocUnchangedAsync(doc, fullText))
+                if (await ShouldInsertOrUpdateAsync(doc, fullText))
                 {
                     //logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} is unchanged.");
                     continue;
@@ -117,7 +117,7 @@ public class Ingestion(
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
-                await IndexAsync(doc, fullText, docSource, progress, cancelToken);
+                await InsertOrUpdateDocumentAsync(doc, fullText, docSource, progress, cancelToken);
 
                 //logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} added to index.");
 
@@ -125,7 +125,7 @@ public class Ingestion(
                     break;
             }
 
-            await RemoveDeletedFilesAsync(docSource.Reference, documentReferences, cancelToken);
+            await RemoveDeletedDocumentsAsync(docSource.Reference, documentReferences, docSource, cancelToken);
 
             progress.Report(new($"Completed the {docSource.Description} Document Source"));
             progress.Report(new($""));
@@ -145,7 +145,7 @@ public class Ingestion(
     /// <param name="doc"><see cref="DocumentInfo"/> metadata of document.</param>
     /// <param name="fullText">Document text.</param>
     /// <returns>True if the current and previous hashes match.</returns>
-    public virtual async Task<bool> IsDocUnchangedAsync(DocumentInfo doc, string fullText)
+    public virtual async Task<bool> ShouldInsertOrUpdateAsync(DocumentInfo doc, string fullText)
     {
         string newHash = ComputeSha256Hash(fullText);
 
@@ -155,7 +155,6 @@ public class Ingestion(
             try
             {
                 await docHashRep.DeleteAsync([doc.DocumentReference]);
-                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} deleted from hash table.");
                 return true;
             }
             catch (Exception ex)
@@ -169,7 +168,6 @@ public class Ingestion(
             try
             {
                 await docHashRep.InsertAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
-                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} inserted into hash table.");
             }
             catch (Exception ex)
             {
@@ -181,7 +179,6 @@ public class Ingestion(
             try
             {
                 await docHashRep.UpdateAsync(document, newHash);
-                logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} updated in hash table.");
             }
             catch (Exception ex)
             {
@@ -213,7 +210,7 @@ public class Ingestion(
     }
 
     /// <summary>
-    /// Deletes file refs from the index and local DB that aren't in the documentReferences argument.
+    /// Deletes doc refs from the vector search DB and local DB that aren't in the documentReferences argument.
     /// </summary>
     /// <remarks>
     /// The assumption here is that for a given document source, we've identified
@@ -222,42 +219,26 @@ public class Ingestion(
     /// </remarks>
     /// <param name="docSourcePrefix">Filters the documentReferences that can be deleted.</param>
     /// <param name="documentReferences">Existing document references.</param>
+    /// <param name="docSource">Document Source we're deleting from.</param>
     /// <param name="cancelToken"><see cref="CancellationToken"/></param>
-    public async Task RemoveDeletedFilesAsync(string docSourcePrefix, List<string> documentReferences, CancellationToken cancellationToken)
+    public async Task RemoveDeletedDocumentsAsync(string docSourcePrefix, List<string> documentReferences, IDocumentSource docSource, CancellationToken cancellationToken)
     {
-        List<TextChunk> chunks = await azSearchSvc.GetDocumentReferencesAsync(docSourcePrefix, cancellationToken);
+        List<TextChunk> chunks = await searchSvc.GetDocumentReferencesAsync(docSourcePrefix, cancellationToken);
 
         List<string> chunkIdsToDelete = [];
         List<string> chunkDocumentReferencesToDelete = [];
 
-        // delete in index but not in hashes
+        // delete in index but not in search
         foreach (TextChunk chunk in chunks)
         {
             if (chunk.DocumentReference is null || documentReferences.Contains(chunk.DocumentReference))
-            {
-                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} either doesn't exist or is already known.");
                 continue;
-            }
 
             if (chunk?.ID is string chunkID)
-            {
                 chunkIdsToDelete.Add(chunkID);
-                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has an ID.");
-            }
-            else
-            {
-                //logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} does not have an ID.");
-            }
 
             if (chunk?.DocumentReference is string chunkDocumentReference)
-            {
                 chunkDocumentReferencesToDelete.Add(chunkDocumentReference);
-                //logger.LogInformation($"{DateTime.Now} {chunk.DocumentReference} has a document reference.");
-            }
-            else
-            {
-                //logger.LogInformation($"{DateTime.Now} {chunk?.DocumentReference} doesn't have a document reference.");
-            }
         }
 
         List<string> indexReferences =
@@ -266,39 +247,24 @@ public class Ingestion(
             .Distinct()
             .ToList();
 
-        // delete in hashes but not in index
+        // delete in hashes but not in search
         foreach (string docRef in documentReferences)
             if (!indexReferences.Contains(docRef))
-            {
                 chunkDocumentReferencesToDelete.Add(docRef);
-                //logger.LogInformation($"{DateTime.Now} the index contains {docRef}.");
-            }
-            else
-            {
-                //logger.LogInformation($"{DateTime.Now} the index does not contain {docRef}.");
-            }
 
         if (chunkIdsToDelete.Count != 0)
-        {
-            await pipeline.ExecuteAsync(
-                async token => await azSearchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, token),
-                cancellationToken);
-            //logger.LogInformation($"{DateTime.Now} Deleted {chunkIdsToDelete.Count} chunks from index.");
-        }
-        else
-        {
-            //logger.LogInformation($"{DateTime.Now} No chunks to delete.");
-        }
-        
-        if (chunkDocumentReferencesToDelete.Count != 0)
-        {
-            await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
-            //logger.LogInformation($"{DateTime.Now} Deleted {chunkDocumentReferencesToDelete.Count} document references from  hash.");
-        }
-        else
-        {
-            //logger.LogInformation($"{DateTime.Now} No document references to delete.");
-        }
+            await RemoveFromSearchAsync(chunkIdsToDelete, docSource, cancellationToken);
 
+        if (chunkDocumentReferencesToDelete.Count != 0)
+            await docHashRep.DeleteAsync(chunkDocumentReferencesToDelete);
     }
+
+    /// <summary>
+    /// Removes document references from the search DB.
+    /// </summary>
+    /// <param name="chunkIdsToDelete">IDs of chunks to delete.</param>
+    /// <param name="docSrc">Indicates which data source to delete from.</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
+    public virtual async Task RemoveFromSearchAsync(List<string> chunkIdsToDelete, IDocumentSource docSrc, CancellationToken cancellationToken) =>
+        await searchSvc.DeleteDocumentReferencesAsync(chunkIdsToDelete, cancellationToken);
 }

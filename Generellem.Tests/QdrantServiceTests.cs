@@ -41,7 +41,7 @@ namespace Generellem.Services.Tests;
 //    }
 
 //    [Fact]
-//    public async Task CreateIndexAsync_CreatesIndexSuccessfully()
+//    public async Task CreateInsertOrUpdateDocumentAsync_CreatesIndexSuccessfully()
 //    {
 //        qdrantClientMock
 //            .Setup(client => 
@@ -63,7 +63,7 @@ namespace Generellem.Services.Tests;
 //                    It.IsAny<CancellationToken>()))
 //            .Returns(Task.CompletedTask);
 
-//        await qdrantService.CreateIndexAsync(CancellationToken.None);
+//        await qdrantService.CreateInsertOrUpdateDocumentAsync(CancellationToken.None);
 
 //        qdrantClientMock.Verify(client => 
 //            client.CreateCollectionAsync(
@@ -86,7 +86,7 @@ namespace Generellem.Services.Tests;
 //    }
 
 //    [Fact]
-//    public async Task CreateIndexAsync_ThrowsRequestFailedException_LogsError()
+//    public async Task CreateInsertOrUpdateDocumentAsync_ThrowsRequestFailedException_LogsError()
 //    {
 //        qdrantClientMock
 //            .Setup(client => 
@@ -108,7 +108,7 @@ namespace Generellem.Services.Tests;
 //                    It.IsAny<CancellationToken>()))
 //            .ThrowsAsync(new RequestFailedException("Unauthorized"));
 
-//        await Assert.ThrowsAsync<RequestFailedException>(() => qdrantService.CreateIndexAsync(CancellationToken.None));
+//        await Assert.ThrowsAsync<RequestFailedException>(() => qdrantService.CreateInsertOrUpdateDocumentAsync(CancellationToken.None));
 
 //        loggerMock.Verify(
 //            l => l.Log(

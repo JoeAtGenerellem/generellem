@@ -15,6 +15,7 @@ public class GKeys
 
     public const string AzBlobConnectionString = "GenerellemAzBlobConnectionString";
     public const string AzBlobContainer = "GenerellemAzBlobContainer";
+    public const string AzBlobQueue = "GenerellemAzBlobQueue";
 
     //
     // Azure OpenAI

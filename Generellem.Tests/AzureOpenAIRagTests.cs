@@ -4,7 +4,6 @@ using Azure.AI.OpenAI;
 using Generellem.Embedding;
 using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
-using Generellem.Rag.AzureOpenAI;
 using Generellem.Services;
 using Generellem.Tests;
 
@@ -20,12 +19,12 @@ public class AzureOpenAIRagTests
     readonly Mock<IDynamicConfiguration> configMock = new();
     readonly Mock<IEmbedding> embedMock = new();
     readonly Mock<ILlm> llmMock = new();
-    readonly Mock<ILogger<AzureOpenAIRag>> logMock = new();
+    readonly Mock<ILogger<GenerellemDefaultRag>> logMock = new();
 
     readonly Mock<AzureOpenAIClient> openAIClientMock = new();
     readonly Mock<LlmClientFactory> llmClientFactMock;
 
-    readonly AzureOpenAIRag azureOpenAIRag;
+    readonly GenerellemDefaultRag azureOpenAIRag;
 
     public AzureOpenAIRagTests()
     {
@@ -68,7 +67,7 @@ public class AzureOpenAIRagTests
             .Returns(Task.FromResult(Mock.Of<AzureOpenAIChatResponse>()));
 
         azureOpenAIRag = 
-            new AzureOpenAIRag(
+            new GenerellemDefaultRag(
                 azSearchSvcMock.Object, 
                 configMock.Object, 
                 embedMock.Object, 
