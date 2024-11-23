@@ -5,7 +5,6 @@ using Generellem.Llm;
 using Generellem.Llm.AzureOpenAI;
 using Generellem.Processors;
 using Generellem.Rag;
-using Generellem.Rag.AzureOpenAI;
 using Generellem.Repository;
 using Generellem.Services;
 using Generellem.Services.Azure;
@@ -95,5 +94,5 @@ void ConfigureServices(IServiceCollection services)
     services.AddTransient<ILlm, AzureOpenAILlm>();
     services.AddTransient<IMSGraphClientFactory, MSGraphDeviceCodeClientFactory>();
     services.AddTransient<IPathProviderFactory, PathProviderFactory>();
-    services.AddTransient<IRag, AzureOpenAIRag>();
+    services.AddTransient<IRag, GenerellemDefaultRag>();
 }

@@ -129,8 +129,146 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
             // 404 indicates the index does not exist
         }
     }
+     
+    public async Task<List<TextChunk>> GetDocumentReferenceAsync(string documentReference, CancellationToken cancellationToken)
+    {
+        if (!await DoesIndexExistAsync(cancellationToken))
+            return new();
 
-    public async Task<List<TextChunk>> GetDocumentReferencesAsync(string sourceReference, CancellationToken cancellationToken)
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+
+        try
+        {    
+            Uri endpoint = new(QdrantEndpoint);
+            QdrantClient client = new(endpoint.Host, apiKey: QdrantApiKey, https: QdrantEndpoint.StartsWith("https"));
+
+            Filter filter = new()
+		    {
+			    Must =
+			    {
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = DocumentReference, Match = new Match { Keyword = documentReference } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = QdrantTenantID } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
+				    },
+			    }
+		    };
+
+            WithPayloadSelector payloadSelector =
+                new()
+                {
+                    Include = new PayloadIncludeSelector
+                    {
+                        Fields = { new string[] { ID, DocumentReference } }
+                    }
+                };
+
+            IReadOnlyList<ScoredPoint> queryResult =
+                await pipeline.ExecuteAsync(
+                    async token => await client.QueryAsync(
+                        collectionName: QdrantCollection,
+                        filter: filter,
+                        payloadSelector: true,
+                        vectorsSelector: true),
+                    cancellationToken);
+
+            List<TextChunk> chunks =
+                (from doc in queryResult
+                 select new TextChunk
+                 {
+                     ID = doc.Id.Uuid,
+                     DocumentReference = doc.Payload[DocumentReference].StringValue
+                 })
+                .ToList();
+
+            return chunks;
+        }
+        catch (RpcException rpcEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rpcEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
+    }
+   
+    public async Task<List<TextChunk>> GetDocumentReferencesAsync(string docSourcePrefix, CancellationToken cancellationToken)
+    {
+        if (!await DoesIndexExistAsync(cancellationToken))
+            return new();
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+
+        try
+        {    
+            Uri endpoint = new(QdrantEndpoint);
+            QdrantClient client = new(endpoint.Host, apiKey: QdrantApiKey, https: QdrantEndpoint.StartsWith("https"));
+
+            Filter filter = new()
+		    {
+			    Must =
+			    {
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = SourceReference, Match = new Match { Keyword = docSourcePrefix } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = QdrantTenantID } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
+				    },
+			    }
+		    };
+
+            WithPayloadSelector payloadSelector =
+                new()
+                {
+                    Include = new PayloadIncludeSelector
+                    {
+                        Fields = { new string[] { ID, DocumentReference } }
+                    }
+                };
+
+            IReadOnlyList<ScoredPoint> queryResult =
+                await pipeline.ExecuteAsync(
+                    async token => await client.QueryAsync(
+                        collectionName: QdrantCollection,
+                        filter: filter,
+                        payloadSelector: true,
+                        vectorsSelector: true),
+                    cancellationToken);
+
+            List<TextChunk> chunks =
+                (from doc in queryResult
+                 select new TextChunk
+                 {
+                     ID = doc.Id.Uuid,
+                     DocumentReference = doc.Payload[DocumentReference].StringValue
+                 })
+                .ToList();
+
+            return chunks;
+        }
+        catch (RpcException rpcEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rpcEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
+    }
+
+    public async Task<List<TextChunk>> GetSourceReferencesAsync(string sourceReference, CancellationToken cancellationToken)
     {
         if (!await DoesIndexExistAsync(cancellationToken))
             return new();

@@ -12,7 +12,7 @@ using OpenAI.Chat;
 
 using System.Text;
 
-namespace Generellem.Rag.AzureOpenAI;
+namespace Generellem.Rag;
 
 /// <summary>
 /// Performs Retrieval-Augmented Generation (RAG) for Azure OpenAI.
@@ -20,12 +20,12 @@ namespace Generellem.Rag.AzureOpenAI;
 /// <remarks>
 /// Inspired by Retrieval-Augmented Generation (RAG)/Bea Stollnitz at https://bea.stollnitz.com/blog/rag/
 /// </remarks>
-public class AzureOpenAIRag(
+public class GenerellemDefaultRag(
     ISearchService azSearchSvc,
     IDynamicConfiguration config,
     IEmbedding embedding,
     ILlm llm,
-    ILogger<AzureOpenAIRag> logger)
+    ILogger<GenerellemDefaultRag> logger)
     : IRag
 {
     /// <summary>
@@ -34,7 +34,10 @@ public class AzureOpenAIRag(
     string ContextMessage { get; set; } =
         "You're an AI assistant reading the transcript of a conversation " +
         "between a user and an assistant. Given the chat history and " +
-        "user's query, infer the user's real intent.";
+        "user's query, infer the user's real intent. Don't include any " +
+        "discussion of whether you know what Generellem is - just assume " +
+        "that Generellem is defined as this service that is asking you" +
+        "questions.";
 
     /// <summary>
     /// Instructions to the LLM on how interpret query and respond.
@@ -129,10 +132,10 @@ public class AzureOpenAIRag(
         ];
 
         ChatCompletionOptions chatCompletionOptions = new();
-        AzureOpenAIChatRequest request = new() 
+        AzureOpenAIChatRequest request = new()
         {
             Messages = messages,
-            Options = chatCompletionOptions 
+            Options = chatCompletionOptions
         };
 
         AzureOpenAIChatResponse lastResponse = await llm.PromptAsync<AzureOpenAIChatResponse>(request, cancelToken);
