@@ -20,7 +20,7 @@ namespace Generellem.Processors.Tests;
 public class IngestionTests
 {
     const string DefaultDocumentText = "Test document text";
-    const string DefaultFilePaht = "TestDocs\\file.txt";
+    const string DefaultFilePath = "TestDocs\\file.txt";
     const string SpecDescription = "Test Spec Description";
 
     readonly string DocSource = $"{Environment.MachineName}:{nameof(FileSystem)}";
@@ -118,7 +118,7 @@ public class IngestionTests
     public async Task InsertOrUpdateDocumentAsync_CallsCreateIndex()
     {
         MemoryStream memStream = new(Encoding.Default.GetBytes(DefaultDocumentText));
-        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePaht, SpecDescription);
+        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePath, SpecDescription);
         IProgress<IngestionProgress> progress = new Progress<IngestionProgress>();
 
         await ingestion.InsertOrUpdateDocumentAsync(docInfo, DefaultDocumentText, docSourceMock.Object, progress, CancellationToken.None);
@@ -130,7 +130,7 @@ public class IngestionTests
     public async Task InsertOrUpdateDocumentAsync_CallsUploadDocuments()
     {
         MemoryStream memStream = new(Encoding.Default.GetBytes(DefaultDocumentText));
-        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePaht, SpecDescription);
+        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePath, SpecDescription);
         IProgress<IngestionProgress> progress = new Progress<IngestionProgress>();
 
         await ingestion.InsertOrUpdateDocumentAsync(docInfo, DefaultDocumentText, docSourceMock.Object, progress, CancellationToken.None);
@@ -153,7 +153,7 @@ public class IngestionTests
             }
         ];        
         MemoryStream memStream = new(Encoding.Default.GetBytes(string.Empty));
-        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePaht, SpecDescription);
+        DocumentInfo docInfo = new(DocSource, memStream, new Text(), DefaultFilePath, SpecDescription);
         IProgress<IngestionProgress> progress = new Progress<IngestionProgress>();
 
         await ingestion.InsertOrUpdateDocumentAsync(docInfo, DefaultDocumentText, docSourceMock.Object, progress, CancellationToken.None);
@@ -162,7 +162,7 @@ public class IngestionTests
             srchSvc.UploadDocumentsAsync(chunks, It.IsAny<CancellationToken>()),
             Times.Never());
     }
-
+    
     [Fact]
     public async Task ProcessFilesAsync_CallsGetDocumentsAsync()
     {

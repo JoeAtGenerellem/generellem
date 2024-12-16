@@ -24,6 +24,8 @@ public class Ingestion(
     ISearchService searchSvc)
     : IGenerellemIngestion
 {
+    const string EmptyText = "<empty>";
+
 #if DEBUG
     readonly ResiliencePipeline pipeline =
     new ResiliencePipelineBuilder()
@@ -96,24 +98,22 @@ public class Ingestion(
                 try
                 {
                     fullText = await doc.DocType.GetTextAsync(doc.DocStream, doc.DocPath);
+
+                    // regardless of whether the file has contents or not, we need to insert it into the DB to track it
+                    // setting it to "<empty>" avoids errors when uploading to vector DB
+                    if (string.IsNullOrWhiteSpace(fullText))
+                        fullText = EmptyText;
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(GenerellemLogEvents.DocumentError, ex, "Unable to process file: {FilePath}", doc.DocPath);
+                    logger.LogWarning(GenerellemLogEvents.DocumentError, ex, "Unable to extract text from stream: {FilePath}", doc.DocPath);
                     continue;
                 }
 
-                if (!string.IsNullOrWhiteSpace(fullText))
-                {
-                    //logger.LogInformation($"{DateTime.Now} Added {doc.DocumentReference} to {nameof(documentReferences)}");
-                    documentReferences.Add(doc.DocumentReference);
-                }
+                documentReferences.Add(doc.DocumentReference);
 
-                if (await ShouldInsertOrUpdateAsync(doc, fullText))
-                {
-                    //logger.LogInformation($"{DateTime.Now} {doc.DocumentReference} is unchanged.");
+                if (!await ShouldInsertOrUpdateAsync(doc, fullText))
                     continue;
-                }
 
                 progress.Report(new($"Ingesting {doc.DocumentReference}", ++count));
 
@@ -151,20 +151,7 @@ public class Ingestion(
 
         DocumentHash? document = await docHashRep.GetDocumentHashAsync(doc.DocumentReference);
 
-        if (document is not null && string.IsNullOrWhiteSpace(fullText))
-            try
-            {
-                await docHashRep.DeleteAsync([doc.DocumentReference]);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    "Unable to delete doc hash - {DocumentReference}, {DocumentHash}, {Exception}",
-                    doc.DocumentReference, newHash, ex);
-                return true;
-            }
-        else if (document?.Hash == null)
+        if (document?.Hash == null)
             try
             {
                 await docHashRep.InsertAsync(new DocumentHash { DocumentReference = doc.DocumentReference, Hash = newHash });
@@ -187,9 +174,9 @@ public class Ingestion(
                     doc.DocumentReference, newHash, ex);
             }
         else
-            return true;
+            return false;
 
-        return false;
+        return true;
     }
 
     /// <summary>
@@ -228,7 +215,7 @@ public class Ingestion(
         List<string> chunkIdsToDelete = [];
         List<string> chunkDocumentReferencesToDelete = [];
 
-        // delete in index but not in search
+        // delete in index but not in vector DB
         foreach (TextChunk chunk in chunks)
         {
             if (chunk.DocumentReference is null || documentReferences.Contains(chunk.DocumentReference))
@@ -247,7 +234,7 @@ public class Ingestion(
             .Distinct()
             .ToList();
 
-        // delete in hashes but not in search
+        // delete in hashes but not in Vector DB
         foreach (string docRef in documentReferences)
             if (!indexReferences.Contains(docRef))
                 chunkDocumentReferencesToDelete.Add(docRef);
