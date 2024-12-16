@@ -265,4 +265,9 @@ public class AzureSearchService(IDynamicConfiguration config, ILogger<AzureSearc
             throw;
         }
     }
+
+    public Task<List<TextChunk>> GetDocumentReferencesByPathAsync(string path, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }

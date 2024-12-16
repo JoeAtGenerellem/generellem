@@ -3,18 +3,18 @@ using Generellem.Document.DocumentTypes;
 using Generellem.Services;
 
 using Microsoft.Graph;
-
-using System.Runtime.CompilerServices;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
+
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Generellem.DocumentSource;
 
 /// <summary>
 /// Supports ingesting documents from a computer file system
 /// </summary>
-public class OneDriveFileSystem : IDocumentSource
+public class OneDriveFileSystem : IMSGraphDocumentSource
 {
     /// <summary>
     /// Describes the document source.
@@ -24,28 +24,28 @@ public class OneDriveFileSystem : IDocumentSource
     /// <summary>
     /// Used in the vector DB to uniquely identify the document and where it was ingested from.
     /// </summary>
-    public string Reference { get; set; }
+    public string Reference { get; set; } = string.Empty;
 
     readonly IEnumerable<string> DocExtensions = DocumentTypeFactory.GetSupportedDocumentTypes();
     readonly string OneDriveErrorMessage = $"Please set {GKeys.OneDriveUserName} via IDynamicConfiguration with the user name for the OneDrive account that we're reading from.";
 
-    readonly string? oneDriveUserName;
+    readonly string? baseUrl;
+    readonly string? userId;
 
-    readonly IDynamicConfiguration config;
     readonly IMSGraphClientFactory msGraphFact;
     readonly IPathProvider pathProvider;
 
     public OneDriveFileSystem(
-        IDynamicConfiguration config, 
+        string baseUrl,
+        string userId,
         IMSGraphClientFactory msGraphFact,
         IPathProviderFactory pathProviderFact)
     {
-        this.config = config;
         this.msGraphFact = msGraphFact;
         this.pathProvider = pathProviderFact.Create(this);
 
-        oneDriveUserName = config[GKeys.OneDriveUserName];
-        Reference = $"{oneDriveUserName}:{nameof(OneDriveFileSystem)}";
+        this.baseUrl = baseUrl;
+        this.userId = userId;
     }
 
     /// <summary>
@@ -60,14 +60,14 @@ public class OneDriveFileSystem : IDocumentSource
     /// <returns>Enumerable of <see cref="DocumentInfo"/>.</returns>
     public async IAsyncEnumerable<DocumentInfo> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancelToken)
     {
-        // Callers should set the BaseUrl in the config file, environment variable, or dynamic configuration based on a website location.
-        string? baseUrl = config[GKeys.BaseUrl] ?? "https://set-BaseUrl-config";
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(baseUrl, nameof(baseUrl));
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
 
-        GraphServiceClient graphClient = msGraphFact.Create(Scopes.OneDrive, baseUrl, MSGraphTokenType.OneDrive);
+        GraphServiceClient graphClient = msGraphFact.Create(Scopes.OneDrive, baseUrl, userId, MSGraphTokenType.OneDrive);
         User? user = await graphClient.Me.GetAsync();
 
         if (user is not null)
-            Reference = $"{user.DisplayName}:{nameof(OneDriveFileSystem)}";
+            Reference = $"{user.Id}:{nameof(OneDriveFileSystem)}";
 
         IEnumerable<PathSpec> fileSpecs = await pathProvider.GetPathsAsync($"{nameof(OneDriveFileSystem)}.json");
 
@@ -81,30 +81,13 @@ public class OneDriveFileSystem : IDocumentSource
 
             string specDescription = spec.Description ?? string.Empty;
 
-            if (user?.Id is null)
+            string? driveId = user?.Id;
+
+            if (driveId is null)
                 continue;
 
-            DriveItem? driveItem = null;
-            try
-            {
-                // Get the DriveItem for the given path
-                driveItem = await graphClient.Drives[user.Id].Root
-                    .ItemWithPath(path)
-                    .GetAsync();
-            }
-            catch (ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
-            {
-                // ignore the error and continue
-                // TODO: consider the possibility that we should notify the user that this folder does not exist anymore.
-                driveItem = null;
-            }
-
-            if (driveItem is null)
-                continue;
-
-            // Recursively get all files under the DriveItem
-            List<DriveItem> files = await GetFilesRecursively(graphClient, driveItem, user.Id);
-
+            List<DriveItem> files = await GetFilesAsync(graphClient, driveId, path);
+            
             foreach (var file in files)
             {
                 string fileName = file.Name ?? string.Empty;
@@ -113,38 +96,67 @@ public class OneDriveFileSystem : IDocumentSource
 
                 IDocumentType docType = DocumentTypeFactory.Create(fileName);
 
-                // Get the stream for each file
-                Stream? fileStream = await graphClient.Drives[user.Id].Items[file.Id].Content.GetAsync();
+                    // Get the stream for each file
+                Stream? fileStream = await graphClient.Drives[driveId].Items[file.Id].Content.GetAsync();
                 yield return new DocumentInfo(Reference, fileStream, docType, filePath, specDescription);
 
                 if (cancelToken.IsCancellationRequested)
                     break;
             }
 
+
             if (cancelToken.IsCancellationRequested)
                 break;
         }
     }
-    
-    async Task<List<DriveItem>> GetFilesRecursively(GraphServiceClient graphClient, DriveItem driveItem, string userID)
+
+    /// <summary>
+    /// Get files from the OneDrive account.
+    /// </summary>
+    /// <param name="graphClient"><see cref="GraphServiceClient"/></param>
+    /// <param name="driveId">Unique ID for drive to query.</param>
+    /// <param name="path">Location on drive to start at.</param>
+    /// <returns><see cref="DriveItem"/></returns>
+    public async Task<List<DriveItem>> GetFilesAsync(GraphServiceClient graphClient, string driveId, string path)
+    {
+        DriveItem? driveItem = null;
+        try
+        {
+            driveItem = await graphClient.Drives[driveId].Root
+                .ItemWithPath(path)
+                .GetAsync();
+        }
+        catch (ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+        {
+            // ignore the error and continue
+            // TODO: consider the possibility that we should notify the user that this folder does not exist anymore.
+            driveItem = null;
+        }
+
+        if (driveItem is null)
+            return new();
+
+        return await GetFilesRecursively(graphClient, driveItem, driveId);
+    }
+
+    async Task<List<DriveItem>> GetFilesRecursively(GraphServiceClient graphClient, DriveItem driveItem, string driveId)
     {
         List<DriveItem> files = new List<DriveItem>();
 
-        // Check if the current DriveItem is a file
         if (driveItem.Folder == null)
         {
             files.Add(driveItem);
         }
         else
         {
-            // If it's a folder, recursively get files in its children
-            DriveItemCollectionResponse? children = await graphClient.Drives[userID].Items[driveItem.Id].Children.GetAsync();
+            // TODO: use Polly here to back off exponentially on 429 errors
+            DriveItemCollectionResponse? children = await graphClient.Drives[driveId].Items[driveItem.Id].Children.GetAsync();
 
             if (children?.Value is null)
                 return files;
 
             foreach (DriveItem child in children.Value)
-                files.AddRange(await GetFilesRecursively(graphClient, child, userID));
+                files.AddRange(await GetFilesRecursively(graphClient, child, driveId));
         }
 
         return files;

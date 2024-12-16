@@ -8,6 +8,7 @@ public class GKeys
 
     public const string GroupID = "GroupID";
     public const string TenantID = "TenantID";
+    public const string Path = "Path";
 
     //
     // Azure Blob Service
@@ -44,6 +45,7 @@ public class GKeys
     public const string OneDriveUserName = "OneDriveUserName";
     public const string SharedDocumentsID = "Shared Documents";
     public const string SharePointUserName = "SharePointUserName";
+    public const string UserID = "UserID";
 
     //
     // Qdrant

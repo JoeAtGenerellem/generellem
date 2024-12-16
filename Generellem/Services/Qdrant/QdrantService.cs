@@ -18,15 +18,14 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
     const int VectorSearchDimensions = 1536; // defined by text-embedding-ada-002
     const string DocumentReference = "DocumentReference";
     const string ID = "ID";
-    const string SourceReference = "SourceReference";
     const string Content = "Content";
-    const string TenantID = "TenantID";
     const string GroupID = "GroupID";
+    const string Pathname = "Path";
+    const string SourceReference = "SourceReference";
+    const string TenantID = "TenantID";
 
     string? QdrantApiKey => config[GKeys.QdrantApiKey];
     string? QdrantEndpoint => config[GKeys.QdrantEndpoint]; //"http://localhost:6334";
-    string QdrantTenantID => config[GKeys.TenantID] ?? "0";
-    string QdrantGroupID => config[GKeys.GroupID] ?? "0";
     string? QdrantCollection => config[GKeys.QdrantCollection];
 
     bool collectionExists = false;
@@ -139,6 +138,10 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
 
+        string QdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string QdrantGroupID = config[GKeys.GroupID] ?? "0";
+        string QdrantPath = config[GKeys.Path] ?? "?";
+
         try
         {    
             Uri endpoint = new(QdrantEndpoint);
@@ -207,6 +210,9 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+        
+        string qdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string qdrantGroupID = config[GKeys.GroupID] ?? "0";
 
         try
         {    
@@ -223,11 +229,105 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = QdrantTenantID } },
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = qdrantTenantID } },
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = qdrantGroupID } },
+				    },
+			    }
+		    };
+
+            WithPayloadSelector payloadSelector =
+                new()
+                {
+                    Include = new PayloadIncludeSelector
+                    {
+                        Fields = { new string[] { ID, DocumentReference } }
+                    }
+                };
+
+            List<TextChunk> allChunks = new();
+
+            const ulong limit = 1000;
+
+            ulong resultCount = 0;
+            ulong offset = 0;
+            do
+            {
+
+                IReadOnlyList<ScoredPoint> queryResult =
+                    await pipeline.ExecuteAsync(
+                        async token => await client.QueryAsync(
+                            collectionName: QdrantCollection,
+                            filter: filter,
+                            limit: limit,
+                            offset: offset,
+                            payloadSelector: true,
+                            vectorsSelector: true),
+                        cancellationToken);
+
+                resultCount = (ulong)queryResult.Count;
+
+                if (resultCount == 0)
+                    break;
+
+                offset += resultCount;
+
+                List<TextChunk> chunks =
+                    (from doc in queryResult
+                     select new TextChunk
+                     {
+                         ID = doc.Id.Uuid,
+                         DocumentReference = doc.Payload[DocumentReference].StringValue
+                     })
+                    .ToList();
+
+                allChunks.AddRange(chunks);
+
+            } while (resultCount > 0);
+
+            return allChunks;
+        }
+        catch (RpcException rpcEx)
+        {
+            logger.LogError(GenerellemLogEvents.AuthorizationFailure, rpcEx, "Please check credentials and exception details for more info.");
+            throw;
+        }
+    }
+       
+    public async Task<List<TextChunk>> GetDocumentReferencesByPathAsync(string path, CancellationToken cancellationToken)
+    {
+        if (!await DoesIndexExistAsync(cancellationToken))
+            return new();
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
+        ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+
+        string qdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string qdrantGroupID = config[GKeys.GroupID] ?? "0";
+
+        try
+        {
+            Uri endpoint = new(QdrantEndpoint);
+            QdrantClient client = new(endpoint.Host, apiKey: QdrantApiKey, https: QdrantEndpoint.StartsWith("https"));
+
+            Filter filter = new()
+		    {
+			    Must =
+			    {
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = Pathname, Match = new Match { Keyword = path } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = qdrantTenantID } },
+				    },
+				    new Condition
+				    {
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = qdrantGroupID } },
 				    },
 			    }
 		    };
@@ -276,6 +376,9 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+        
+        string qdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string qdrantGroupID = config[GKeys.GroupID] ?? "0";
 
         try
         {    
@@ -292,11 +395,11 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = QdrantTenantID } },
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = qdrantTenantID } },
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = qdrantGroupID } },
 				    },
 			    }
 		    };
@@ -342,6 +445,10 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+        
+        string qdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string qdrantGroupID = config[GKeys.GroupID] ?? "0";
+        string qdrantPath = config[GKeys.Path] ?? "?";
 
         try
         {
@@ -355,8 +462,9 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
                         [DocumentReference] = doc.DocumentReference!,
                         [SourceReference] = doc.SourceReference!,
                         [Content] = doc.Content!,
-                        [TenantID] = QdrantTenantID ?? string.Empty,
-                        [GroupID] = QdrantGroupID ?? string.Empty
+                        [Pathname] = qdrantPath,
+                        [TenantID] = qdrantTenantID,
+                        [GroupID] = qdrantGroupID
                      },
                      Vectors = doc.Embedding.ToArray()
                  })
@@ -381,6 +489,9 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantApiKey, nameof(QdrantApiKey));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantEndpoint, nameof(QdrantEndpoint));
         ArgumentException.ThrowIfNullOrWhiteSpace(QdrantCollection, nameof(QdrantCollection));
+        
+        string qdrantTenantID = config[GKeys.TenantID] ?? "0";
+        string qdrantGroupID = config[GKeys.GroupID] ?? "0";
 
         const int ResponseCountLimit = 3;
 
@@ -392,11 +503,11 @@ public class QdrantService(IDynamicConfiguration config, ILogger<QdrantService> 
                 {
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = QdrantTenantID } },
+					    Field = new FieldCondition { Key = TenantID, Match = new Match { Keyword = qdrantTenantID } },
 				    },
 				    new Condition
 				    {
-					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = QdrantGroupID } },
+					    Field = new FieldCondition { Key = GroupID, Match = new Match { Keyword = qdrantGroupID } },
 				    },
 			    }
 		    };

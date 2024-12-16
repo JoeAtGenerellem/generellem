@@ -18,6 +18,6 @@ public class MSGraphDocumentSourceFactory(
     /// <returns>List of <see cref="IDocumentSource"/></returns>
     public IEnumerable<IDocumentSource> GetDocumentSources() =>
         [
-            new OneDriveFileSystem(config, msGraphFact, pathProviderFact)
+            new OneDriveFileSystem(config[GKeys.BaseUrl]!, config[GKeys.UserID]!, msGraphFact, pathProviderFact)
         ];
 }
